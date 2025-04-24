@@ -1,13 +1,12 @@
-// Task data structure
+// Global variables
 let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
 let currentTaskId = localStorage.getItem('currentTaskId') || null;
-let isPaused = false;
-let pauseReason = null;
-let focusTime = parseFloat(localStorage.getItem('focusTime')) || 0;
+let timeBlocks = JSON.parse(localStorage.getItem('timeBlocks')) || [];
+let focusTime = parseInt(localStorage.getItem('focusTime')) || 0;
 let lastTimestamp = null;
 let pauseTimestamp = null;
-let pauses = JSON.parse(localStorage.getItem('pauses')) || [];
-let timeBlocks = JSON.parse(localStorage.getItem('timeBlocks')) || [];
+let isPaused = localStorage.getItem('isPaused') === 'true';
+let pauseReason = null;
 let breakTimerInterval = null;
 let breakDuration = 0;
 
@@ -20,7 +19,60 @@ const PRIORITIES = {
     5: 'Urgent'
 };
 
-// Initialize the application
+// Add a custom tooltip element to the DOM
+const tooltipElement = document.createElement('div');
+tooltipElement.className = 'custom-tooltip';
+document.body.appendChild(tooltipElement);
+
+// Variables to track tooltip state
+let tooltipVisible = false;
+let tooltipTimeout = null;
+
+// Function to show tooltip
+function showTooltip(content, event) {
+    // Clear any existing timeout
+    if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout);
+    }
+    
+    // Set tooltip content
+    tooltipElement.innerHTML = content;
+    
+    // Position tooltip near the mouse
+    const x = event.clientX + 15;
+    const y = event.clientY + 15;
+    
+    // Ensure tooltip stays within viewport
+    const tooltipRect = tooltipElement.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Adjust position if needed
+    const adjustedX = Math.min(x, viewportWidth - tooltipRect.width - 20);
+    const adjustedY = Math.min(y, viewportHeight - tooltipRect.height - 20);
+    
+    // Set position
+    tooltipElement.style.left = `${adjustedX}px`;
+    tooltipElement.style.top = `${adjustedY}px`;
+    
+    // Show tooltip
+    tooltipElement.classList.add('visible');
+    tooltipVisible = true;
+}
+
+// Function to hide tooltip
+function hideTooltip() {
+    if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout);
+    }
+    
+    tooltipTimeout = setTimeout(() => {
+        tooltipElement.classList.remove('visible');
+        tooltipVisible = false;
+    }, 200);
+}
+
+// Initialize the app
 function init() {
     // Set current date
     updateDateDisplay();
@@ -263,6 +315,7 @@ function startTaskTracking(taskId) {
         id: Date.now().toString(),
         taskId: taskId,
         startTime: now.toISOString(),
+        originalStartTime: now.toISOString(), // Store original start time
         endTime: null,
         type: 'task'
     };
@@ -1030,8 +1083,20 @@ function renderSchedule() {
                     // instead of compressing it as it's worked on
                     const taskDuration = task.duration / 60; // Convert minutes to hours
                     
+                    // Store the original start time to ensure consistency
+                    if (!activeBlock.originalStartTime) {
+                        activeBlock.originalStartTime = activeBlock.startTime;
+                        // Save to localStorage to persist this information
+                        localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
+                    }
+                    
+                    // Use the original start time for positioning
+                    const originalStartTime = new Date(activeBlock.originalStartTime || activeBlock.startTime);
+                    const originalStartHourFraction = originalStartTime.getHours() + (originalStartTime.getMinutes() / 60);
+                    const adjustedOriginalStart = Math.max(0, originalStartHourFraction);
+                    
                     // Calculate top and height as percentage
-                    const topPosition = adjustedStart * (100/totalHours);
+                    const topPosition = adjustedOriginalStart * (100/totalHours);
                     const height = taskDuration * (100/totalHours);
                     
                     // Render current task block with original estimated size
@@ -1064,7 +1129,8 @@ function renderSchedule() {
             // Calculate expected end time for current task
             const task = tasks.find(t => t.id === currentTaskId);
             if (task) {
-                const activeStartTime = new Date(activeBlock.startTime);
+                // Use the original start time for consistency
+                const activeStartTime = new Date(activeBlock.originalStartTime || activeBlock.startTime);
                 const taskDuration = task.duration / 60; // Original duration in hours
                 
                 // Current position is start time plus original duration
@@ -1108,42 +1174,66 @@ function createScheduleItem(container, task, topPosition, height, className) {
     const MIN_HEIGHT_FOR_DETAILS = 3; // 3% of the schedule height
     
     // Create tooltip content with task details
-    let tooltipContent = `${task.name}`;
+    let tooltipContent = '';
     
-    // Add more details to tooltip based on task type
+    // Add title with badge
+    tooltipContent += `<div class="tooltip-title">${task.name}`;
+    
+    // Add badge based on task type
     if (className === 'current-task') {
-        tooltipContent += ` (Current Task)`;
+        tooltipContent += `<span class="tooltip-badge current">Current Task</span>`;
     } else if (className === 'completed-task') {
-        tooltipContent += ` (Completed)`;
+        tooltipContent += `<span class="tooltip-badge completed">Completed</span>`;
     } else if (className === 'break-task') {
-        tooltipContent += ` (Break)`;
-        if (task.breakReason) {
-            tooltipContent += ` - ${task.breakReason}`;
-        }
+        tooltipContent += `<span class="tooltip-badge break">Break</span>`;
     } else {
+        tooltipContent += `<span class="tooltip-badge future">Upcoming</span>`;
+    }
+    
+    tooltipContent += `</div>`;
+    
+    // Add break reason if applicable
+    if (className === 'break-task' && task.breakReason) {
+        tooltipContent += `<div class="tooltip-reason">${task.breakReason}</div>`;
+    }
+    
+    // Add time information
+    if (className !== 'current-task' && className !== 'completed-task' && className !== 'break-task') {
         // For future tasks, add time remaining
         const hours = Math.floor(task.timeRemaining / 60);
         const minutes = Math.round(task.timeRemaining % 60);
-        tooltipContent += ` (`;
+        tooltipContent += `<div class="tooltip-time">Duration: `;
         if (hours > 0) {
             tooltipContent += `${hours}h `;
         }
-        tooltipContent += `${minutes}m)`;
+        tooltipContent += `${minutes}m</div>`;
     }
     
     // Add priority information
     const priorityLabels = ['Lowest', 'Low', 'Medium', 'High', 'Urgent'];
     if (task.priority && task.priority >= 1 && task.priority <= 5) {
-        tooltipContent += ` - Priority: ${priorityLabels[task.priority - 1]}`;
+        tooltipContent += `<div class="tooltip-priority">Priority: ${priorityLabels[task.priority - 1]}</div>`;
     }
     
     // Add description if available
     if (task.description) {
-        tooltipContent += `\n${task.description}`;
+        tooltipContent += `<div class="tooltip-description">${task.description}</div>`;
     }
     
-    // Set the tooltip
-    item.title = tooltipContent;
+    // Add mouse events for custom tooltip
+    item.addEventListener('mouseenter', (event) => {
+        showTooltip(tooltipContent, event);
+    });
+    
+    item.addEventListener('mousemove', (event) => {
+        if (tooltipVisible) {
+            showTooltip(tooltipContent, event);
+        }
+    });
+    
+    item.addEventListener('mouseleave', () => {
+        hideTooltip();
+    });
     
     if (height < MIN_HEIGHT_FOR_DETAILS) {
         // For very small blocks, create a minimal representation without details
@@ -1632,6 +1722,8 @@ function saveToLocalStorage() {
     localStorage.setItem('tasks', JSON.stringify(tasks));
     localStorage.setItem('currentTaskId', currentTaskId);
     localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
+    localStorage.setItem('focusTime', focusTime);
+    localStorage.setItem('isPaused', isPaused);
 }
 
 // Initialize the app when the DOM is loaded
