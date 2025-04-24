@@ -344,7 +344,8 @@ function saveTask() {
         deadline: deadlineInput.value || null,
         createdAt: new Date().toISOString(),
         completed: false,
-        progress: 0
+        progress: 0,
+        rescheduleCount: 0
     };
     
     // Add the task to our array
@@ -515,54 +516,39 @@ function completeResume() {
     if (breakBlockIndex !== -1) {
         timeBlocks[breakBlockIndex].endTime = new Date().toISOString();
     }
-    
-    // Calculate pause duration
-    const pauseDuration = (Date.now() - pauseTimestamp) / 1000 / 60; // in minutes
-    
-    // Add to pauses array
-    pauses.push({
-        taskId: currentTaskId,
-        reason: pauseReason,
-        duration: pauseDuration,
-        timestamp: pauseTimestamp,
-        resumeTimestamp: Date.now()
-    });
-    
+
     // Reset pause state
     isPaused = false;
     pauseReason = null;
     pauseTimestamp = null;
-    
+
     // Update UI
     const pauseBtn = document.getElementById('pause-btn');
     pauseBtn.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="6" y="4" width="4" height="16"></rect>
-                <rect x="14" y="4" width="4" height="16"></rect>
+            <rect x="6" y="4" width="4" height="16"></rect>
+            <rect x="14" y="4" width="4" height="16"></rect>
         </svg>
         Pause
     `;
-    
-    // Hide the break timer overlay
+
+    // Hide overlay
     document.getElementById('break-timer-overlay').style.display = 'none';
     document.getElementById('break-notes-container').style.display = 'none';
     document.getElementById('resume-break-btn').style.display = 'block';
     document.getElementById('break-notes-input').value = '';
-    
-    // Remove break mode class
+
     document.body.classList.remove('break-mode');
-    
-    // Start tracking for current task again
+
+    // Resume task tracking
     if (currentTaskId) {
         startTaskTracking(currentTaskId);
     }
-    
-    // Re-render the schedule to update
+
+    // Update UI and storage
     renderSchedule();
-    
-    // Save to localStorage
-    localStorage.setItem('pauses', JSON.stringify(pauses));
     localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
+    localStorage.removeItem('pauses'); // Clean up
 }
 
 // Complete the current task
@@ -598,28 +584,26 @@ function completeCurrentTask() {
 // Reschedule the current task
 function rescheduleCurrentTask() {
     if (!currentTaskId) return;
-    
-    // First, end tracking for the current segment
+
+    // End tracking for current task
     endTaskTracking(currentTaskId, 'rescheduled');
-    
+
     const taskIndex = tasks.findIndex(t => t.id === currentTaskId);
     if (taskIndex !== -1) {
-        // Move the task to the end of the queue while preserving its remaining time
-        const task = tasks.splice(taskIndex, 1)[0];
-        tasks.push(task);
-        
+        tasks[taskIndex].rescheduleCount += 1;
+
         // Set the next task as current
         const oldTaskId = currentTaskId;
         setNextCurrentTask();
-        
+
         // Start tracking new task if one was selected
         if (currentTaskId && currentTaskId !== oldTaskId && !isPaused) {
             startTaskTracking(currentTaskId);
         }
-        
+
         // Save changes
         saveToLocalStorage();
-        
+
         // Rerender
         renderTasks();
     }
@@ -634,8 +618,9 @@ function markDistracted() {
 
 // Set the next incomplete task as the current task
 function setNextCurrentTask() {
-    const nextTask = tasks.find(t => !t.completed);
-    currentTaskId = nextTask ? nextTask.id : null;
+    const incompleteTasks = sortTasks(tasks.filter(t => !t.completed));
+    currentTaskId = incompleteTasks.length > 0 ? incompleteTasks[0].id : null;
+    localStorage.setItem('currentTaskId', currentTaskId);
 }
 
 // Update time tracking
@@ -815,8 +800,8 @@ function renderTasksList() {
     tasksList.innerHTML = '';
     
     // Filter out the current task and completed tasks
-    const remainingTasks = tasks.filter(t => t.id !== currentTaskId && !t.completed);
-    
+    const remainingTasks = sortTasks(tasks.filter(t => t.id !== currentTaskId && !t.completed));
+
     if (remainingTasks.length === 0) {
         return;
     }
@@ -889,7 +874,6 @@ function renderTasksList() {
     });
 }
 
-// Add these functions
 function switchToTask(taskId) {
     // If there's a current task, end tracking for it
     if (currentTaskId && !isPaused) {
@@ -913,6 +897,27 @@ function switchToTask(taskId) {
 
 function cancelTaskSwitch() {
     document.getElementById('task-switch-modal').style.display = 'none';
+}
+
+function sortTasks(tasksArray) {
+    return tasksArray.sort((a, b) => {
+        // Priority descending (5 to 1)
+        if (b.priority !== a.priority) {
+            return b.priority - a.priority;
+        }
+        // Deadline ascending (earlier first, nulls last)
+        if (a.deadline && b.deadline) {
+            return new Date(a.deadline) - new Date(b.deadline);
+        }
+        if (a.deadline) return -1;
+        if (b.deadline) return 1;
+        // Reschedule count ascending (fewer reschedules first)
+        if (a.rescheduleCount !== b.rescheduleCount) {
+            return a.rescheduleCount - b.rescheduleCount;
+        }
+        // Creation date ascending (older first)
+        return new Date(a.createdAt) - new Date(b.createdAt);
+    });
 }
 
 // Render the schedule
@@ -1061,25 +1066,7 @@ function renderSchedule() {
         }
         
         // Get all active tasks (excluding current task)
-        let activeTasks = [...tasks].filter(t => !t.completed && t.id !== currentTaskId);
-        
-        // Sort tasks by priority (higher first) and deadline (earlier first)
-        activeTasks.sort((a, b) => {
-            // First by priority (descending)
-            if (b.priority !== a.priority) {
-                return b.priority - a.priority;
-            }
-            
-            // Then by deadline (ascending, null deadlines at the end)
-            if (a.deadline && b.deadline) {
-                return new Date(a.deadline) - new Date(b.deadline);
-            }
-            if (a.deadline) return -1;
-            if (b.deadline) return 1;
-            
-            // Finally by creation date
-            return new Date(a.createdAt) - new Date(b.createdAt);
-        });
+        let activeTasks = sortTasks(tasks.filter(t => !t.completed && t.id !== currentTaskId));
         
         // Place upcoming tasks
         activeTasks.forEach(task => {
