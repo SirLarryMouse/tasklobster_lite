@@ -187,18 +187,18 @@ function initializeSchedule() {
     scheduleContent.innerHTML = '';
     
     // Add time labels and hour dividers
-    for (let hour = 8; hour <= 18; hour++) {
+    for (let hour = 0; hour <= 23; hour++) {
         // Add time label
         const timeLabel = document.createElement('div');
         timeLabel.className = 'time-label';
-        timeLabel.style.top = `${(hour - 8) * 10}%`;
-        timeLabel.textContent = hour > 12 ? `${hour-12}pm` : hour === 12 ? '12pm' : `${hour}am`;
+        timeLabel.style.top = `${(hour) * (100/24)}%`; // Distribute evenly across 24 hours
+        timeLabel.textContent = hour > 12 ? `${hour-12}pm` : hour === 12 ? '12pm' : hour === 0 ? '12am' : `${hour}am`;
         timeColumn.appendChild(timeLabel);
         
         // Add hour divider
         const hourDivider = document.createElement('div');
         hourDivider.className = 'hour-divider';
-        hourDivider.style.top = `${(hour - 8) * 10}%`;
+        hourDivider.style.top = `${(hour) * (100/24)}%`;
         scheduleContent.appendChild(hourDivider);
     }
     
@@ -215,25 +215,23 @@ function updateCurrentTimeIndicator() {
     const hours = now.getHours();
     const minutes = now.getMinutes();
     
-    if (hours >= 8 && hours <= 18) {
-        // Create or update current time indicator
-        let indicator = document.querySelector('.current-time-indicator');
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.className = 'current-time-indicator';
-            
-            const label = document.createElement('div');
-            label.className = 'current-time-label';
-            label.textContent = 'Now';
-            
-            indicator.appendChild(label);
-            document.getElementById('schedule-content').appendChild(indicator);
-        }
+    // Create or update current time indicator
+    let indicator = document.querySelector('.current-time-indicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.className = 'current-time-indicator';
         
-        // Position the indicator
-        const position = (hours - 8 + minutes / 60) * 10;
-        indicator.style.top = `${position}%`;
+        const label = document.createElement('div');
+        label.className = 'current-time-label';
+        label.textContent = 'Now';
+        
+        indicator.appendChild(label);
+        document.getElementById('schedule-content').appendChild(indicator);
     }
+    
+    // Position the indicator based on 24-hour schedule
+    const position = (hours + minutes / 60) * (100/24);
+    indicator.style.top = `${position}%`;
 }
 
 // Update the current time display
@@ -928,8 +926,8 @@ function renderSchedule() {
     const items = scheduleContent.querySelectorAll('.schedule-item');
     items.forEach(item => item.remove());
     
-    const startHour = 8; // 8am
-    const totalHours = 10; // 8am to 6pm
+    // Use 24-hour schedule
+    const totalHours = 24;
     
     // First, render all historical time blocks (completed tasks and breaks)
     const completedBlocks = timeBlocks.filter(block => block.endTime !== null);
@@ -948,8 +946,8 @@ function renderSchedule() {
         }
         
         // Calculate position on schedule
-        const startHourFraction = (startTime.getHours() - startHour) + (startTime.getMinutes() / 60);
-        const endHourFraction = (endTime.getHours() - startHour) + (endTime.getMinutes() / 60);
+        const startHourFraction = startTime.getHours() + (startTime.getMinutes() / 60);
+        const endHourFraction = endTime.getHours() + (endTime.getMinutes() / 60);
         
         // Skip if outside display range
         if (endHourFraction <= 0 || startHourFraction >= totalHours) {
@@ -962,8 +960,8 @@ function renderSchedule() {
         const duration = adjustedEnd - adjustedStart;
         
         // Calculate top and height as percentage
-        const topPosition = adjustedStart * 10; // 10% per hour
-        const height = duration * 10; // 10% per hour
+        const topPosition = adjustedStart * (100/totalHours); // Percentage based on 24 hours
+        const height = duration * (100/totalHours); // Percentage based on 24 hours
         
         if (block.type === 'break') {
             // Render break block
@@ -997,23 +995,25 @@ function renderSchedule() {
         const now = new Date();
         
         // Calculate position on schedule
-        const startHourFraction = (startTime.getHours() - startHour) + (startTime.getMinutes() / 60);
-        const currentHourFraction = (now.getHours() - startHour) + (now.getMinutes() / 60);
+        const startHourFraction = startTime.getHours() + (startTime.getMinutes() / 60);
         
         // Skip if outside display range
-        if (currentHourFraction <= 0 || startHourFraction >= totalHours) {
+        if (startHourFraction >= totalHours) {
             // Do nothing
         } else {
             // Adjust to fit within display
             const adjustedStart = Math.max(0, startHourFraction);
-            const adjustedEnd = Math.min(totalHours, currentHourFraction);
-            const duration = adjustedEnd - adjustedStart;
-            
-            // Calculate top and height as percentage
-            const topPosition = adjustedStart * 10; // 10% per hour
-            const height = Math.max(0.5, duration * 10); // 10% per hour, min 0.5%
             
             if (activeBlock.type === 'break') {
+                // For breaks, show the actual elapsed time
+                const currentHourFraction = now.getHours() + (now.getMinutes() / 60);
+                const adjustedEnd = Math.min(totalHours, currentHourFraction);
+                const duration = adjustedEnd - adjustedStart;
+                
+                // Calculate top and height as percentage
+                const topPosition = adjustedStart * (100/totalHours);
+                const height = Math.max(0.5, duration * (100/totalHours));
+                
                 // Render active break block
                 createScheduleItem(
                     scheduleContent,
@@ -1026,7 +1026,15 @@ function renderSchedule() {
                 // Find the task
                 const task = tasks.find(t => t.id === activeBlock.taskId);
                 if (task) {
-                    // Render current task block
+                    // For in-progress tasks, use the original estimated duration
+                    // instead of compressing it as it's worked on
+                    const taskDuration = task.duration / 60; // Convert minutes to hours
+                    
+                    // Calculate top and height as percentage
+                    const topPosition = adjustedStart * (100/totalHours);
+                    const height = taskDuration * (100/totalHours);
+                    
+                    // Render current task block with original estimated size
                     createScheduleItem(
                         scheduleContent,
                         task,
@@ -1049,7 +1057,7 @@ function renderSchedule() {
         const currentMinute = now.getMinutes();
         
         // Update current position based on now
-        currentPosition = Math.max(0, (currentHour - startHour) + currentMinute / 60);
+        currentPosition = Math.max(0, currentHour + currentMinute / 60);
         
         // If we have an active block, position should be after it ends
         if (activeBlock && activeBlock.taskId === currentTaskId) {
@@ -1057,11 +1065,11 @@ function renderSchedule() {
             const task = tasks.find(t => t.id === currentTaskId);
             if (task) {
                 const activeStartTime = new Date(activeBlock.startTime);
-                const activeDurationSoFar = ((now - activeStartTime) / 1000 / 60) / 60; // in hours
-                const remainingDuration = task.timeRemaining / 60; // in hours
+                const taskDuration = task.duration / 60; // Original duration in hours
                 
-                // Current position is now plus remaining duration
-                currentPosition += remainingDuration;
+                // Current position is start time plus original duration
+                currentPosition = Math.max(currentPosition, 
+                    activeStartTime.getHours() + activeStartTime.getMinutes() / 60 + taskDuration);
             }
         }
         
@@ -1072,14 +1080,14 @@ function renderSchedule() {
         activeTasks.forEach(task => {
             const taskDuration = task.timeRemaining / 60; // Convert minutes to hours
             
-            // Don't place tasks that would end after 6pm
+            // Don't place tasks that would end after the end of the day
             if (currentPosition + taskDuration <= totalHours) {
                 // Create schedule item
                 createScheduleItem(
                     scheduleContent,
                     task,
-                    currentPosition * 10, // Convert to percentage
-                    taskDuration * 10, // Convert to percentage
+                    currentPosition * (100/totalHours), // Convert to percentage
+                    taskDuration * (100/totalHours), // Convert to percentage
                     'future-task'
                 );
                 
