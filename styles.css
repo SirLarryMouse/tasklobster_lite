@@ -464,6 +464,7 @@ header {
     background: #f8fafc;
     border-right: 1px solid #e2e8f0;
     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+    overflow-y: hidden; /* Prevent scrollbar */
 }
 
 .time-label {
@@ -485,7 +486,7 @@ header {
     right: 0;
     top: 60px; /* Adjusted to make room for header */
     bottom: 0;
-    overflow-y: auto;
+    overflow-y: hidden; /* Changed from auto to hidden to prevent scrollbar */
     padding: 0 10px;
     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
 }
