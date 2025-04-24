@@ -185,4 +185,4 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 For questions, feedback, or support:
 
 - Email: [support@tasklobster.com](mailto:support@tasklobster.com)
-- GitHub Issues: [Report a bug](https://github.com/SirLarryMouse/TaskLobsterLite/issues)
+- GitHub Issues: [Report a bug](https://github.com/SirLarryMouse/tasklobster_lite/issues)

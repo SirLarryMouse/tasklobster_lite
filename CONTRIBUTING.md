@@ -162,7 +162,7 @@ Documentation is crucial for the project's usability. When adding or changing fe
 
 Join our community channels to get help and discuss contributions:
 
-- [GitHub Discussions](https://github.com/SirLarryMouse/TaskLobsterLite/discussions)
+- [GitHub Discussions](https://github.com/SirLarryMouse/tasklobster_lite/discussions)
 
 ---
 
