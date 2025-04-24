@@ -171,8 +171,8 @@
                                     <h3 class="import-export-title">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                            <polyline points="17 8 12 3 7 8"></polyline>
-                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                            <polyline points="17 8 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
                                         </svg>
                                         Import Tasks (todo.txt format)
                                     </h3>
@@ -365,7 +365,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M23 21v-2a4 4 0 0 1 0 7.75"></path>
                                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                             </svg>
                             Meeting
@@ -447,14 +447,28 @@
     <div class="modal-overlay" id="task-switch-modal">
         <div class="modal">
             <div class="modal-header">
-                <h3 class="modal-title">Switch Tasks?</h3>
+                <h3 class="modal-title" id="switch-modal-title">Switch Tasks?</h3>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to switch from "<span id="current-task-name-confirm"></span>" to "<span id="new-task-name-confirm"></span>"?</p>
-                <p class="text-sm text-gray-600 mt-2">Your progress on the current task will be saved.</p>
+                <p id="switch-modal-question">Are you sure you want to switch from "<span id="current-task-name-confirm"></span>" to "<span id="new-task-name-confirm"></span>"?</p>
+                
+                <!-- New Task Section (for task switching) -->
+                <div id="new-task-section">
+                    <p>You'll be switching to: <strong><span id="new-task-name-confirm"></span></strong></p>
+                </div>
+                
+                <!-- Progress Slider Section (for rescheduling) -->
+                <div id="progress-slider-container" style="display: none; margin-top: 20px;">
+                    <p>Estimated task completion progress:</p>
+                    <div class="slider-container">
+                        <input type="range" id="progress-slider" min="0" max="100" step="5" value="0" class="slider">
+                        <div class="slider-value" id="progress-value">0%</div>
+                    </div>
+                    <p class="slider-help-text">This will recalculate the estimated time remaining based on your progress.</p>
+                </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline" id="cancel-switch-btn">Cancel</button>
+                <button class="btn" id="cancel-switch-btn">Cancel</button>
                 <button class="btn btn-primary" id="confirm-switch-btn">Switch Tasks</button>
             </div>
         </div>

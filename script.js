@@ -89,12 +89,26 @@ function init() {
     document.getElementById('save-break-notes-btn').addEventListener('click', saveBreakNotes);
     document.getElementById('skip-break-notes-btn').addEventListener('click', skipBreakNotes);
     document.getElementById('confirm-switch-btn').addEventListener('click', function() {
-        const switchToId = this.dataset.switchToId;
-        if (switchToId) {
-            switchToTask(switchToId);
+        const action = this.dataset.action || 'switch';
+        
+        if (action === 'switch') {
+            const switchToId = this.dataset.switchToId;
+            if (switchToId) {
+                switchToTask(switchToId);
+            }
+        } else if (action === 'reschedule') {
+            const taskId = this.dataset.taskId;
+            if (taskId) {
+                completeReschedule(taskId);
+            }
         }
     });
     document.getElementById('cancel-switch-btn').addEventListener('click', cancelTaskSwitch);
+    
+    // Progress slider
+    document.getElementById('progress-slider').addEventListener('input', function() {
+        document.getElementById('progress-value').textContent = `${this.value}%`;
+    });
     
     // Tab navigation
     setupTabs();
@@ -636,28 +650,109 @@ function completeCurrentTask() {
 function rescheduleCurrentTask() {
     if (!currentTaskId) return;
 
-    // End tracking for current task
-    endTaskTracking(currentTaskId, 'rescheduled');
-
+    // Find the current task
     const taskIndex = tasks.findIndex(t => t.id === currentTaskId);
-    if (taskIndex !== -1) {
-        tasks[taskIndex].rescheduleCount += 1;
+    if (taskIndex === -1) return;
+    
+    const currentTask = tasks[taskIndex];
+    
+    // Show the task switch confirmation modal with progress slider
+    document.getElementById('task-switch-modal').style.display = 'flex';
+    document.getElementById('switch-modal-title').textContent = 'Reschedule Task?';
+    document.getElementById('switch-modal-question').textContent = `Are you sure you want to reschedule "${currentTask.name}"?`;
+    
+    // Show the progress slider section
+    document.getElementById('progress-slider-container').style.display = 'block';
+    
+    // Set the initial value of the progress slider to the current task progress
+    const progressSlider = document.getElementById('progress-slider');
+    progressSlider.value = currentTask.progress;
+    document.getElementById('progress-value').textContent = `${currentTask.progress}%`;
+    
+    // Set the action for the confirm button
+    const confirmButton = document.getElementById('confirm-switch-btn');
+    confirmButton.textContent = 'Reschedule';
+    confirmButton.dataset.action = 'reschedule';
+    confirmButton.dataset.taskId = currentTaskId;
+    
+    // Hide the new task name section
+    document.getElementById('new-task-section').style.display = 'none';
+}
 
-        // Set the next task as current
-        const oldTaskId = currentTaskId;
-        setNextCurrentTask();
-
-        // Start tracking new task if one was selected
-        if (currentTaskId && currentTaskId !== oldTaskId && !isPaused) {
-            startTaskTracking(currentTaskId);
+// Update the confirm switch button event listener to handle both switch and reschedule
+document.getElementById('confirm-switch-btn').addEventListener('click', function() {
+    const action = this.dataset.action || 'switch';
+    
+    if (action === 'switch') {
+        const switchToId = this.dataset.switchToId;
+        if (switchToId) {
+            switchToTask(switchToId);
         }
-
-        // Save changes
-        saveToLocalStorage();
-
-        // Rerender
-        renderTasks();
+    } else if (action === 'reschedule') {
+        const taskId = this.dataset.taskId;
+        if (taskId) {
+            completeReschedule(taskId);
+        }
     }
+});
+
+// Function to complete the reschedule action with the updated progress
+function completeReschedule(taskId) {
+    const progressSlider = document.getElementById('progress-slider');
+    const newProgress = parseInt(progressSlider.value);
+    
+    // Find the task
+    const taskIndex = tasks.findIndex(t => t.id === taskId);
+    if (taskIndex === -1) return;
+    
+    // Update the task progress
+    tasks[taskIndex].progress = newProgress;
+    
+    // Calculate new time remaining based on progress
+    if (newProgress > 0) {
+        const totalTimeSpent = calculateTotalTimeSpent(taskId);
+        const estimatedTotalTime = totalTimeSpent / (newProgress / 100);
+        tasks[taskIndex].timeRemaining = Math.max(0, estimatedTotalTime - totalTimeSpent);
+    }
+    
+    // End tracking for current task
+    endTaskTracking(taskId, 'rescheduled');
+    
+    // Increment reschedule count
+    tasks[taskIndex].rescheduleCount += 1;
+    
+    // Set the next task as current
+    const oldTaskId = currentTaskId;
+    setNextCurrentTask();
+    
+    // Start tracking new task if one was selected
+    if (currentTaskId && currentTaskId !== oldTaskId && !isPaused) {
+        startTaskTracking(currentTaskId);
+    }
+    
+    // Save changes
+    saveToLocalStorage();
+    renderTasks();
+    
+    // Hide the modal
+    document.getElementById('task-switch-modal').style.display = 'none';
+}
+
+// Calculate total time spent on a task
+function calculateTotalTimeSpent(taskId) {
+    let totalTimeSpent = 0;
+    
+    // Sum up all time blocks for this task
+    timeBlocks.forEach(block => {
+        if (block.taskId === taskId && block.endTime) {
+            const startTime = new Date(block.startTime);
+            const endTime = new Date(block.endTime);
+            const duration = (endTime - startTime) / (1000 * 60); // Convert to minutes
+            totalTimeSpent += duration;
+        }
+    });
+    
+    return totalTimeSpent;
 }
 
 // Handle distraction button click
@@ -942,12 +1037,25 @@ function switchToTask(taskId) {
     saveToLocalStorage();
     renderTasks();
     
-    // Hide modal if open
+    // Hide modal if open and reset its state
     document.getElementById('task-switch-modal').style.display = 'none';
+    document.getElementById('switch-modal-title').textContent = 'Switch Tasks?';
+    document.getElementById('confirm-switch-btn').textContent = 'Switch Tasks';
+    document.getElementById('confirm-switch-btn').dataset.action = 'switch';
+    document.getElementById('progress-slider-container').style.display = 'none';
+    document.getElementById('new-task-section').style.display = 'block';
 }
 
 function cancelTaskSwitch() {
+    // Hide modal
     document.getElementById('task-switch-modal').style.display = 'none';
+    
+    // Reset the modal state
+    document.getElementById('switch-modal-title').textContent = 'Switch Tasks?';
+    document.getElementById('confirm-switch-btn').textContent = 'Switch Tasks';
+    document.getElementById('confirm-switch-btn').dataset.action = 'switch';
+    document.getElementById('progress-slider-container').style.display = 'none';
+    document.getElementById('new-task-section').style.display = 'block';
 }
 
 function sortTasks(tasksArray) {
@@ -1728,3 +1836,8 @@ function saveToLocalStorage() {
 
 // Initialize the app when the DOM is loaded
 document.addEventListener('DOMContentLoaded', init);
+
+// Add event listener for progress slider
+document.getElementById('progress-slider').addEventListener('input', function() {
+    document.getElementById('progress-value').textContent = `${this.value}%`;
+});
