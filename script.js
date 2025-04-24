@@ -83,27 +83,27 @@ function init() {
     document.getElementById('save-task-btn').addEventListener('click', saveTask);
     document.getElementById('pause-btn').addEventListener('click', handlePause);
     document.getElementById('complete-btn').addEventListener('click', completeCurrentTask);
-    document.getElementById('reschedule-btn').addEventListener('click', rescheduleCurrentTask);
+    document.getElementById('reschedule-btn').addEventListener('click', function() { showTaskActionModal("reschedule"); });
     document.getElementById('distracted-btn').addEventListener('click', markDistracted);
     document.getElementById('resume-break-btn').addEventListener('click', resumeTask);
     document.getElementById('save-break-notes-btn').addEventListener('click', saveBreakNotes);
     document.getElementById('skip-break-notes-btn').addEventListener('click', skipBreakNotes);
-    document.getElementById('confirm-switch-btn').addEventListener('click', function() {
-        const action = this.dataset.action || 'switch';
+    document.getElementById("confirm-switch-btn").addEventListener("click", function() {
+        const action = this.dataset.action || "switch";
         
-        if (action === 'switch') {
+        if (action === "switch") {
             const switchToId = this.dataset.switchToId;
             if (switchToId) {
-                switchToTask(switchToId);
+                completeTaskAction("switch", switchToId);
             }
-        } else if (action === 'reschedule') {
+        } else if (action === "reschedule") {
             const taskId = this.dataset.taskId;
             if (taskId) {
-                completeReschedule(taskId);
+                completeTaskAction("reschedule", taskId);
             }
         }
     });
-    document.getElementById('cancel-switch-btn').addEventListener('click', cancelTaskSwitch);
+    document.getElementById('cancel-switch-btn').addEventListener('click', cancelTaskAction);
     
     // Progress slider
     document.getElementById('progress-slider').addEventListener('input', function() {
@@ -647,39 +647,6 @@ function completeCurrentTask() {
 }
 
 // Reschedule the current task
-function rescheduleCurrentTask() {
-    if (!currentTaskId) return;
-
-    // Find the current task
-    const taskIndex = tasks.findIndex(t => t.id === currentTaskId);
-    if (taskIndex === -1) return;
-    
-    const currentTask = tasks[taskIndex];
-    
-    // Show the task switch confirmation modal with progress slider
-    document.getElementById('task-switch-modal').style.display = 'flex';
-    document.getElementById('switch-modal-title').textContent = 'Reschedule Task?';
-    document.getElementById('switch-modal-question').textContent = `Are you sure you want to reschedule "${currentTask.name}"?`;
-    
-    // Show the progress slider section
-    document.getElementById('progress-slider-container').style.display = 'block';
-    
-    // Set the initial value of the progress slider to the current task progress
-    const progressSlider = document.getElementById('progress-slider');
-    progressSlider.value = currentTask.progress;
-    document.getElementById('progress-value').textContent = `${currentTask.progress}%`;
-    
-    // Set the action for the confirm button
-    const confirmButton = document.getElementById('confirm-switch-btn');
-    confirmButton.textContent = 'Reschedule';
-    confirmButton.dataset.action = 'reschedule';
-    confirmButton.dataset.taskId = currentTaskId;
-    
-    // Hide the new task name section
-    document.getElementById('new-task-section').style.display = 'none';
-}
-
-// Update the confirm switch button event listener to handle both switch and reschedule
 document.getElementById('confirm-switch-btn').addEventListener('click', function() {
     const action = this.dataset.action || 'switch';
     
@@ -697,29 +664,6 @@ document.getElementById('confirm-switch-btn').addEventListener('click', function
 });
 
 // Function to complete the reschedule action with the updated progress
-function completeReschedule(taskId) {
-    const progressSlider = document.getElementById('progress-slider');
-    const newProgress = parseInt(progressSlider.value);
-    
-    // Find the task
-    const taskIndex = tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) return;
-    
-    // Update the task progress
-    tasks[taskIndex].progress = newProgress;
-    
-    // Calculate new time remaining based on progress
-    if (newProgress > 0) {
-        const totalTimeSpent = calculateTotalTimeSpent(taskId);
-        const estimatedTotalTime = totalTimeSpent / (newProgress / 100);
-        tasks[taskIndex].timeRemaining = Math.max(0, estimatedTotalTime - totalTimeSpent);
-    }
-    
-    // End tracking for current task
-    endTaskTracking(taskId, 'rescheduled');
-    
-    // Increment reschedule count
-    tasks[taskIndex].rescheduleCount += 1;
     
     // Set the next task as current
     const oldTaskId = currentTaskId;
@@ -1046,39 +990,23 @@ function switchToTask(taskId) {
     document.getElementById('new-task-section').style.display = 'block';
 }
 
-function cancelTaskSwitch() {
-    // Hide modal
-    document.getElementById('task-switch-modal').style.display = 'none';
-    
-    // Reset the modal state
-    document.getElementById('switch-modal-title').textContent = 'Switch Tasks?';
-    document.getElementById('confirm-switch-btn').textContent = 'Switch Tasks';
-    document.getElementById('confirm-switch-btn').dataset.action = 'switch';
-    document.getElementById('progress-slider-container').style.display = 'none';
-    document.getElementById('new-task-section').style.display = 'block';
-}
-
-function sortTasks(tasksArray) {
-    return tasksArray.sort((a, b) => {
-        // Priority descending (5 to 1)
-        if (b.priority !== a.priority) {
-            return b.priority - a.priority;
-        }
-        // Deadline ascending (earlier first, nulls last)
-        if (a.deadline && b.deadline) {
-            return new Date(a.deadline) - new Date(b.deadline);
-        }
-        if (a.deadline) return -1;
-        if (b.deadline) return 1;
-        // Reschedule count ascending (fewer reschedules first)
-        if (a.rescheduleCount !== b.rescheduleCount) {
-            return a.rescheduleCount - b.rescheduleCount;
-        }
-        // Creation date ascending (older first)
-        return new Date(a.createdAt) - new Date(b.createdAt);
-    });
-}
-
+        taskElement.addEventListener("click", () => {
+            if (currentTaskId && isPaused) {
+                alert("Please resume your current task before switching to a new one.");
+                return;
+            }
+            
+            // Store the task ID for potential switch
+            taskElement.dataset.switchId = task.id;
+            
+            if (currentTaskId) {
+                // Show the switch confirmation modal
+                showTaskActionModal("switch", task.id);
+            } else {
+                // If no current task, just switch directly
+                startTaskTracking(task.id);
+            }
+        });
 // Render the schedule
 function renderSchedule() {
     const scheduleContent = document.getElementById('schedule-content');
@@ -1841,3 +1769,122 @@ document.addEventListener('DOMContentLoaded', init);
 document.getElementById('progress-slider').addEventListener('input', function() {
     document.getElementById('progress-value').textContent = `${this.value}%`;
 });
+
+// Show the task action modal (unified function for both reschedule and switch)
+function showTaskActionModal(action, switchToId = null) {
+    if (!currentTaskId) {
+        alert("No active task to perform this action on.");
+        return;
+    }
+    
+    const currentTask = tasks.find(task => task.id === currentTaskId);
+    if (!currentTask) return;
+    
+    // Show the task action confirmation modal
+    document.getElementById('task-switch-modal').style.display = 'flex';
+    
+    // Set modal title and question based on action
+    if (action === 'reschedule') {
+        document.getElementById('switch-modal-title').textContent = 'Reschedule Task?';
+        document.getElementById('switch-modal-question').textContent = `Are you sure you want to reschedule "${currentTask.name}"?`;
+        document.getElementById('new-task-section').style.display = 'none';
+    } else if (action === 'switch') {
+        const switchToTask = tasks.find(task => task.id === switchToId);
+        if (!switchToTask) return;
+        
+        document.getElementById('switch-modal-title').textContent = 'Switch Tasks?';
+        document.getElementById('switch-modal-question').textContent = `Are you sure you want to switch from "${currentTask.name}" to "${switchToTask.name}"?`;
+        
+        // Update the new task section
+        document.getElementById('new-task-section').style.display = 'block';
+        document.querySelectorAll('#new-task-name-confirm').forEach(el => {
+            el.textContent = switchToTask.name;
+        });
+    }
+    
+    // Always show the progress slider for both actions
+    document.getElementById('progress-slider-container').style.display = 'block';
+    
+    // Set the initial value of the progress slider to the current task progress
+    const progressSlider = document.getElementById('progress-slider');
+    progressSlider.value = currentTask.progress;
+    document.getElementById('progress-value').textContent = `${currentTask.progress}%`;
+    
+    // Update the confirm button
+    const confirmButton = document.getElementById('confirm-switch-btn');
+    confirmButton.textContent = action === 'reschedule' ? 'Reschedule' : 'Switch Tasks';
+    confirmButton.dataset.action = action;
+    confirmButton.dataset.taskId = currentTaskId;
+    if (switchToId) {
+        confirmButton.dataset.switchToId = switchToId;
+    }
+}
+
+// Function to complete the task action (unified function for both reschedule and switch)
+function completeTaskAction(action, targetTaskId) {
+    const taskId = document.getElementById('confirm-switch-btn').dataset.taskId;
+    if (!taskId) return;
+    
+    const taskIndex = tasks.findIndex(task => task.id === taskId);
+    if (taskIndex === -1) return;
+    
+    const progressSlider = document.getElementById('progress-slider');
+    const newProgress = parseInt(progressSlider.value);
+    
+    // Update the task progress
+    tasks[taskIndex].progress = newProgress;
+    
+    // Calculate new time remaining based on progress
+    if (newProgress > 0 && newProgress < 100) {
+        const totalTimeSpent = tasks[taskIndex].timeSpent || 0;
+        const estimatedTotalTime = totalTimeSpent / (newProgress / 100);
+        tasks[taskIndex].timeRemaining = Math.max(0, estimatedTotalTime - totalTimeSpent);
+    } else if (newProgress === 0) {
+        // If progress is 0%, reset time remaining to original duration
+        tasks[taskIndex].timeRemaining = tasks[taskIndex].duration * 60; // Convert minutes to seconds
+    } else if (newProgress === 100) {
+        // If progress is 100%, set time remaining to 0
+        tasks[taskIndex].timeRemaining = 0;
+    }
+    
+    // End tracking for the current task
+    endTaskTracking(taskId, action === 'reschedule' ? 'rescheduled' : 'switched');
+    
+    if (action === 'reschedule') {
+        // Increment reschedule count
+        tasks[taskIndex].rescheduleCount += 1;
+        
+        // Move the task to the top of the queue
+        const task = tasks.splice(taskIndex, 1)[0];
+        tasks.unshift(task);
+    } else if (action === 'switch') {
+        // Switch to the target task
+        startTaskTracking(targetTaskId);
+    }
+    
+    // Update UI
+    renderTasks();
+    updateCurrentTask();
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    // Hide the modal
+    document.getElementById('task-switch-modal').style.display = 'none';
+    document.getElementById('switch-modal-title').textContent = 'Switch Tasks?';
+    document.getElementById('confirm-switch-btn').textContent = 'Switch Tasks';
+    document.getElementById('confirm-switch-btn').dataset.action = 'switch';
+    document.getElementById('progress-slider-container').style.display = 'none';
+}
+
+// Function to cancel the task action
+function cancelTaskAction() {
+    // Hide the modal
+    document.getElementById('task-switch-modal').style.display = 'none';
+    
+    // Reset the modal to default state
+    document.getElementById('switch-modal-title').textContent = 'Switch Tasks?';
+    document.getElementById('confirm-switch-btn').textContent = 'Switch Tasks';
+    document.getElementById('confirm-switch-btn').dataset.action = 'switch';
+    document.getElementById('progress-slider-container').style.display = 'none';
+}
