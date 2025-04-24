@@ -1095,63 +1095,81 @@ function createScheduleItem(container, task, topPosition, height, className) {
     const item = document.createElement('div');
     item.className = `schedule-item ${className} priority-${task.priority || '3'}`;
     item.style.top = `${topPosition}%`;
-    item.style.height = `${Math.max(height, 1)}%`; // Ensure minimum height
     
-    // Format time for badge
-    let badgeText = "";
-    if (className === 'current-task') {
-        badgeText = "Now";
-    } else if (className === 'completed-task') {
-        badgeText = "Done";
-    } else if (className === 'break-task') {
-        badgeText = "Break";
+    // Check if the height is too small for showing details
+    const MIN_HEIGHT_FOR_DETAILS = 3; // 3% of the schedule height
+    
+    if (height < MIN_HEIGHT_FOR_DETAILS) {
+        // For very small blocks, create a minimal representation without details
+        item.style.height = `${Math.max(height, 0.5)}%`; // Ensure at least 0.5% height for visibility
+        item.style.minHeight = 'auto'; // Override the CSS min-height
+        item.style.padding = '2px'; // Smaller padding
+        
+        // Add a simple tooltip with task name
+        item.title = task.name;
+        
+        // Empty content or minimal indicator
+        item.innerHTML = '';
     } else {
-        const hours = Math.floor(task.timeRemaining / 60);
-        const minutes = Math.round(task.timeRemaining % 60);
-        if (hours > 0) {
-            badgeText += `${hours}h `;
+        // For normal sized blocks, show full details
+        item.style.height = `${height}%`;
+        
+        // Format time for badge
+        let badgeText = "";
+        if (className === 'current-task') {
+            badgeText = "Now";
+        } else if (className === 'completed-task') {
+            badgeText = "Done";
+        } else if (className === 'break-task') {
+            badgeText = "Break";
+        } else {
+            const hours = Math.floor(task.timeRemaining / 60);
+            const minutes = Math.round(task.timeRemaining % 60);
+            if (hours > 0) {
+                badgeText += `${hours}h `;
+            }
+            badgeText += `${minutes}m`;
         }
-        badgeText += `${minutes}m`;
-    }
-    
-    // Icon based on status
-    let icon = '';
-    if (className === 'current-task') {
-        icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-        </svg>`;
-    } else if (className === 'break-task') {
-        icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-            <line x1="6" y1="1" x2="6" y2="4"></line>
-            <line x1="10" y1="1" x2="10" y2="4"></line>
-            <line x1="14" y1="1" x2="14" y2="4"></line>
-        </svg>`;
-    } else if (className === 'completed-task') {
-        icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>`;
-    } else {
-        icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>`;
-    }
-    
-    item.innerHTML = `
-        <div class="schedule-item-header">
-            <div class="schedule-item-title">
-                ${icon}
-                ${task.name}
+        
+        // Icon based on status
+        let icon = '';
+        if (className === 'current-task') {
+            icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>`;
+        } else if (className === 'break-task') {
+            icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                <line x1="6" y1="1" x2="6" y2="4"></line>
+                <line x1="10" y1="1" x2="10" y2="4"></line>
+                <line x1="14" y1="1" x2="14" y2="4"></line>
+            </svg>`;
+        } else if (className === 'completed-task') {
+            icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>`;
+        } else {
+            icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>`;
+        }
+        
+        item.innerHTML = `
+            <div class="schedule-item-header">
+                <div class="schedule-item-title">
+                    ${icon}
+                    ${task.name}
+                </div>
+                <div class="item-badge">${badgeText}</div>
             </div>
-            <div class="item-badge">${badgeText}</div>
-        </div>
-    `;
+        `;
+    }
     
     container.appendChild(item);
 }
