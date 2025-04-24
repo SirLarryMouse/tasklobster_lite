@@ -1107,14 +1107,49 @@ function createScheduleItem(container, task, topPosition, height, className) {
     // Check if the height is too small for showing details
     const MIN_HEIGHT_FOR_DETAILS = 3; // 3% of the schedule height
     
+    // Create tooltip content with task details
+    let tooltipContent = `${task.name}`;
+    
+    // Add more details to tooltip based on task type
+    if (className === 'current-task') {
+        tooltipContent += ` (Current Task)`;
+    } else if (className === 'completed-task') {
+        tooltipContent += ` (Completed)`;
+    } else if (className === 'break-task') {
+        tooltipContent += ` (Break)`;
+        if (task.breakReason) {
+            tooltipContent += ` - ${task.breakReason}`;
+        }
+    } else {
+        // For future tasks, add time remaining
+        const hours = Math.floor(task.timeRemaining / 60);
+        const minutes = Math.round(task.timeRemaining % 60);
+        tooltipContent += ` (`;
+        if (hours > 0) {
+            tooltipContent += `${hours}h `;
+        }
+        tooltipContent += `${minutes}m)`;
+    }
+    
+    // Add priority information
+    const priorityLabels = ['Lowest', 'Low', 'Medium', 'High', 'Urgent'];
+    if (task.priority && task.priority >= 1 && task.priority <= 5) {
+        tooltipContent += ` - Priority: ${priorityLabels[task.priority - 1]}`;
+    }
+    
+    // Add description if available
+    if (task.description) {
+        tooltipContent += `\n${task.description}`;
+    }
+    
+    // Set the tooltip
+    item.title = tooltipContent;
+    
     if (height < MIN_HEIGHT_FOR_DETAILS) {
         // For very small blocks, create a minimal representation without details
         item.style.height = `${Math.max(height, 0.5)}%`; // Ensure at least 0.5% height for visibility
         item.style.minHeight = 'auto'; // Override the CSS min-height
         item.style.padding = '2px'; // Smaller padding
-        
-        // Add a simple tooltip with task name
-        item.title = task.name;
         
         // Empty content or minimal indicator
         item.innerHTML = '';
