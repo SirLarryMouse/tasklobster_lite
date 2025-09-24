@@ -1264,82 +1264,151 @@ header {
 
 /* Responsive Design - Mobile and Tablet */
 @media (max-width: 768px) {
-  /* Allow vertical scrolling on mobile */
+  /* Keep fixed viewport - no scrollbars */
   html, body {
-    overflow: auto;
+    overflow: hidden;
   }
   
-  /* Container adjustments - remove fixed height on mobile */
+  /* Container stays fixed height */
   .container {
-    padding: 12px;
-    overflow: visible;
-    height: auto;
-    min-height: calc(100vh - 53px);
+    padding: 8px;
+    height: calc(100vh - 53px);
+    overflow: hidden;
   }
   
-  /* Stack dashboard layout to single column */
-  .dashboard-layout {
-    grid-template-columns: 1fr;
-    gap: 15px;
-    overflow: visible;
-    min-height: 0;
-  }
-  
-  /* Task section adjustments */
-  .task-section {
-    overflow: visible;
-    max-height: none;
-  }
-  
-  /* Dashboard header responsive */
+  /* Compact dashboard header */
   .dashboard-header {
-    flex-direction: column;
-    gap: 15px;
-    align-items: flex-start;
+    margin-bottom: 8px;
+    min-height: 40px;
   }
   
   .dashboard-title {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
+    margin: 0;
   }
   
+  .date-display {
+    font-size: 0.75rem;
+    margin-top: 2px;
+  }
+  
+  /* Compact add task button - just a plus */
   .add-task-btn {
-    align-self: stretch;
-    justify-content: center;
+    padding: 8px;
+    min-width: 40px;
+    border-radius: 50%;
+  }
+  
+  .add-task-btn span {
+    display: none; /* Hide "Add New Task" text */
+  }
+  
+  /* Stack dashboard layout but keep it contained */
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+  
+  /* Task section takes most space */
+  .task-section {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
   
   /* Task actions - 2 columns on tablet */
   .task-actions {
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    gap: 6px;
+    margin-bottom: 10px;
   }
   
-  /* Schedule container adjustments */
+  /* Schedule becomes collapsible */
   .schedule-container {
-    min-height: 400px;
-    height: auto;
+    height: 60px; /* Collapsed by default */
+    min-height: 60px;
+    overflow: hidden;
+    transition: height 0.3s ease;
+    cursor: pointer;
+  }
+  
+  .schedule-container.expanded {
+    height: 200px;
+  }
+  
+  .schedule-container .card-header::after {
+    content: "▼";
+    margin-left: auto;
+    transition: transform 0.3s ease;
+  }
+  
+  .schedule-container.expanded .card-header::after {
+    transform: rotate(180deg);
   }
   
   .schedule-content {
     overflow-y: auto;
-    position: relative;
-    height: 400px;
+    height: calc(100% - 60px);
   }
   
   /* Modal adjustments */
   .modal {
     width: 95%;
-    margin: 10px;
+    max-height: 90vh;
+    margin: 5vh auto;
   }
   
-  /* Reduce card padding */
+  .modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  
+  /* Compact card content */
   .card-content {
-    padding: 12px;
+    padding: 8px;
+    overflow-y: auto;
+    flex: 1;
   }
   
   /* Task details spacing */
   .task-details {
-    padding: 15px 12px;
-    margin: 0 -12px;
+    padding: 8px;
+    margin: 0 -8px;
+  }
+  
+  /* Tasks container becomes collapsible too */
+  #tasks-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 60px; /* Collapsed by default */
+    transition: height 0.3s ease;
+    cursor: pointer;
+  }
+  
+  #tasks-container.expanded {
+    height: calc(100% - 80px); /* Expanded height */
+  }
+  
+  #tasks-container .card-header::after {
+    content: "▼";
+    margin-left: auto;
+    transition: transform 0.3s ease;
+  }
+  
+  #tasks-container.expanded .card-header::after {
+    transform: rotate(180deg);
+  }
+  
+  #tasks-container .card-content {
+    flex: 1;
+    overflow-y: auto;
   }
 }
 
