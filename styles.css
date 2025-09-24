@@ -1261,3 +1261,150 @@ header {
   margin-top: 5px;
   font-size: 12px;
 }
+
+/* Responsive Design - Mobile and Tablet */
+@media (max-width: 768px) {
+  /* Allow vertical scrolling on mobile */
+  html, body {
+    overflow: auto;
+  }
+  
+  /* Container adjustments */
+  .container {
+    padding: 12px;
+    overflow: visible;
+  }
+  
+  /* Stack dashboard layout to single column */
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    overflow: visible;
+  }
+  
+  /* Dashboard header responsive */
+  .dashboard-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .dashboard-title {
+    font-size: 1.5rem;
+  }
+  
+  .add-task-btn {
+    align-self: stretch;
+    justify-content: center;
+  }
+  
+  /* Task actions - 2 columns on tablet */
+  .task-actions {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
+  /* Schedule container adjustments */
+  .schedule-container {
+    min-height: 400px;
+  }
+  
+  .schedule-content {
+    overflow-y: auto;
+  }
+  
+  /* Modal adjustments */
+  .modal {
+    width: 95%;
+    margin: 10px;
+  }
+  
+  /* Reduce card padding */
+  .card-content {
+    padding: 12px;
+  }
+  
+  /* Task details spacing */
+  .task-details {
+    padding: 15px 12px;
+    margin: 0 -12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Even tighter spacing for phones */
+  .container {
+    padding: 8px;
+  }
+  
+  /* Single column for task actions */
+  .task-actions {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  /* Smaller dashboard title */
+  .dashboard-title {
+    font-size: 1.3rem;
+  }
+  
+  /* Responsive task name */
+  .task-name {
+    font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  }
+  
+  /* Tighter card content */
+  .card-content {
+    padding: 10px;
+  }
+  
+  /* Adjust button padding for touch */
+  .btn {
+    padding: 12px 8px;
+    font-size: 0.85rem;
+  }
+  
+  /* Duration buttons responsive */
+  .duration-buttons {
+    gap: 6px;
+  }
+  
+  .duration-btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+  
+  /* Pause reason buttons single column */
+  .pause-reason-buttons {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  /* Task details tighter */
+  .task-details {
+    padding: 12px 10px;
+    margin: 0 -10px;
+  }
+  
+  /* Schedule adjustments for small screens */
+  .schedule-container {
+    min-height: 300px;
+  }
+  
+  .time-column {
+    width: 40px;
+  }
+  
+  .schedule-content {
+    left: 40px;
+  }
+  
+  .time-label {
+    font-size: 0.7rem;
+  }
+  
+  .schedule-item {
+    font-size: 0.75rem;
+    padding: 6px;
+  }
+}
