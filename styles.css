@@ -1269,10 +1269,12 @@ header {
     overflow: auto;
   }
   
-  /* Container adjustments */
+  /* Container adjustments - remove fixed height on mobile */
   .container {
     padding: 12px;
     overflow: visible;
+    height: auto;
+    min-height: calc(100vh - 53px);
   }
   
   /* Stack dashboard layout to single column */
@@ -1280,6 +1282,13 @@ header {
     grid-template-columns: 1fr;
     gap: 15px;
     overflow: visible;
+    min-height: 0;
+  }
+  
+  /* Task section adjustments */
+  .task-section {
+    overflow: visible;
+    max-height: none;
   }
   
   /* Dashboard header responsive */
@@ -1307,10 +1316,13 @@ header {
   /* Schedule container adjustments */
   .schedule-container {
     min-height: 400px;
+    height: auto;
   }
   
   .schedule-content {
     overflow-y: auto;
+    position: relative;
+    height: 400px;
   }
   
   /* Modal adjustments */
