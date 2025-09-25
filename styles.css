@@ -1438,11 +1438,13 @@ html, body {
         height: auto;
         min-height: calc(100vh - 73px);
         padding-bottom: 100px; /* Space for footer */
+        overflow: visible; /* Let body handle scrolling on mobile */
     }
     
     .dashboard-layout {
         grid-template-columns: 1fr;
         gap: 15px;
+        overflow: visible; /* Allow content to flow naturally on mobile */
     }
     
     /* Hide Task Manager and Schedule on mobile by default */
