@@ -1385,6 +1385,31 @@ html, body {
     background: white;
 }
 
+/* Ensure mobile panel content is visible */
+.mobile-panel-content .card {
+    margin-bottom: 0;
+    border: none;
+    box-shadow: none;
+}
+
+.mobile-panel-content .schedule-container {
+    height: 70vh;
+    overflow-y: auto;
+}
+
+.mobile-panel-content .time-column,
+.mobile-panel-content .schedule-content {
+    display: block !important;
+}
+
+.mobile-panel-content .tab-content {
+    padding: 15px 0;
+}
+
+.mobile-panel-content .tab-content.active {
+    display: block !important;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     html, body {

@@ -93,9 +93,70 @@ function cloneTaskManagerContent() {
         
         mobileContent.appendChild(clone);
         
+        // Ensure the first tab is active by default
+        const firstTab = clone.querySelector('.card-tab');
+        const firstTabContent = clone.querySelector('.tab-content');
+        if (firstTab && firstTabContent) {
+            firstTab.classList.add('active');
+            firstTabContent.classList.add('active');
+        }
+        
+        // Re-render task list in mobile view
+        refreshMobileTaskList(clone);
+        
         // Re-bind event listeners for the mobile version
         bindMobileTaskManagerEvents();
     }
+}
+
+// Refresh task list in mobile view
+function refreshMobileTaskList(container) {
+    const taskList = container.querySelector('#mobile-task-list');
+    if (taskList && typeof window.renderTasks === 'function') {
+        // Clear existing tasks
+        taskList.innerHTML = '';
+        
+        // Get tasks from global state
+        const tasks = window.tasks || [];
+        
+        // Render tasks in mobile container
+        tasks.forEach(task => {
+            if (!task.completed) {
+                const taskElement = createMobileTaskElement(task);
+                taskList.appendChild(taskElement);
+            }
+        });
+    }
+}
+
+// Create mobile task element
+function createMobileTaskElement(task) {
+    const taskItem = document.createElement('div');
+    taskItem.className = 'task-item';
+    taskItem.dataset.taskId = task.id;
+    
+    const priorityClass = `priority-${task.priority || 3}`;
+    const timeString = task.scheduledTime ? 
+        new Date(task.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 
+        'No time set';
+    
+    taskItem.innerHTML = `
+        <div class="task-checkbox-container">
+            <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}>
+        </div>
+        <div class="task-content">
+            <div class="task-header">
+                <span class="task-title">${task.name}</span>
+                <span class="task-time">${timeString}</span>
+            </div>
+            <div class="task-meta">
+                <span class="task-priority ${priorityClass}">Priority ${task.priority || 3}</span>
+                <span class="task-duration">${task.duration || 30}min</span>
+            </div>
+        </div>
+    `;
+    
+    return taskItem;
 }
 
 // Clone Schedule content to mobile panel
@@ -121,16 +182,51 @@ function cloneScheduleContent() {
         
         mobileContent.appendChild(clone);
         
-        // Re-render schedule in mobile view
+        // Initialize the mobile schedule properly
+        const mobileTimeColumn = clone.querySelector('.time-column');
         const mobileScheduleContent = clone.querySelector('.schedule-content');
-        if (mobileScheduleContent) {
-            // Clear and re-render schedule items
-            const items = mobileScheduleContent.querySelectorAll('.schedule-item');
-            items.forEach(item => item.remove());
+        
+        if (mobileTimeColumn && mobileScheduleContent) {
+            // Clear existing content
+            mobileTimeColumn.innerHTML = '';
+            mobileScheduleContent.innerHTML = '';
             
-            // Re-render schedule items (reuse existing render logic)
+            // Initialize time column (copy from main script logic)
+            initializeMobileScheduleTimeColumn(mobileTimeColumn);
+            
+            // Re-render schedule items
             renderMobileSchedule(mobileScheduleContent);
+            
+            // Update current time display
+            const mobileCurrentTime = clone.querySelector('#mobile-current-time');
+            if (mobileCurrentTime) {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                mobileCurrentTime.textContent = timeString;
+            }
         }
+    }
+}
+
+// Initialize time column for mobile schedule
+function initializeMobileScheduleTimeColumn(timeColumn) {
+    // Create hour labels (same as main script)
+    for (let hour = 0; hour < 24; hour++) {
+        const timeLabel = document.createElement('div');
+        timeLabel.className = 'time-label';
+        timeLabel.style.top = `${(hour / 24) * 100}%`;
+        
+        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        const ampm = hour < 12 ? 'AM' : 'PM';
+        timeLabel.textContent = `${displayHour}:00 ${ampm}`;
+        
+        timeColumn.appendChild(timeLabel);
+        
+        // Add hour divider
+        const hourDivider = document.createElement('div');
+        hourDivider.className = 'hour-divider';
+        hourDivider.style.top = `${(hour / 24) * 100}%`;
+        timeColumn.appendChild(hourDivider);
     }
 }
 
@@ -180,19 +276,41 @@ function bindMobileTaskManagerEvents() {
         });
     });
     
-    // Re-bind import/export buttons
-    const mobileImportBtn = document.querySelector('#mobile-tasks-content #mobile-import-btn');
-    const mobileExportBtn = document.querySelector('#mobile-tasks-content #mobile-export-btn');
-    const mobileTimesheetBtn = document.querySelector('#mobile-tasks-content #mobile-timesheet-btn');
+    // Re-bind import/export buttons with more robust selectors
+    const mobileImportBtn = document.querySelector('#mobile-tasks-content [id*="import-btn"]');
+    const mobileExportBtn = document.querySelector('#mobile-tasks-content [id*="export-btn"]');
+    const mobileTimesheetBtn = document.querySelector('#mobile-tasks-content [id*="timesheet-btn"]');
     
-    if (mobileImportBtn && typeof window.importTasks === 'function') {
-        mobileImportBtn.addEventListener('click', window.importTasks);
+    if (mobileImportBtn) {
+        mobileImportBtn.addEventListener('click', function() {
+            if (typeof window.importTasks === 'function') {
+                window.importTasks();
+            }
+        });
     }
-    if (mobileExportBtn && typeof window.exportTasks === 'function') {
-        mobileExportBtn.addEventListener('click', window.exportTasks);
+    if (mobileExportBtn) {
+        mobileExportBtn.addEventListener('click', function() {
+            if (typeof window.exportTasks === 'function') {
+                window.exportTasks();
+            }
+        });
     }
-    if (mobileTimesheetBtn && typeof window.generateTimesheet === 'function') {
-        mobileTimesheetBtn.addEventListener('click', window.generateTimesheet);
+    if (mobileTimesheetBtn) {
+        mobileTimesheetBtn.addEventListener('click', function() {
+            if (typeof window.generateTimesheet === 'function') {
+                window.generateTimesheet();
+            }
+        });
+    }
+    
+    // Also bind any file input for import
+    const mobileFileInput = document.querySelector('#mobile-tasks-content input[type="file"]');
+    if (mobileFileInput) {
+        mobileFileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0 && typeof window.handleFileImport === 'function') {
+                window.handleFileImport(e);
+            }
+        });
     }
 }
 
