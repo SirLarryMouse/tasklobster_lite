@@ -64,30 +64,10 @@ html, body {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 15px;
     height: calc(100vh - 53px); /* Subtract header height */
     display: flex;
     flex-direction: column;
-}
-
-/* Dashboard header */
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.dashboard-title {
-    font-size: 2rem;
-    color: #1e293b;
-    font-weight: bold;
-}
-
-.date-display {
-    color: #64748b;
-    font-size: 0.9rem;
-    margin-top: 5px;
 }
 
 .add-task-btn {
@@ -114,7 +94,7 @@ html, body {
 .dashboard-layout {
     display: grid;
     grid-template-columns: 3fr 1fr;
-    gap: 20px;
+    gap: 15px;
     flex: 1;
     min-height: 0; /* Allow children to determine the size */
     overflow: hidden;
@@ -124,7 +104,7 @@ html, body {
 .task-section {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
     overflow: hidden;
     max-height: 100%;
 }
@@ -144,7 +124,7 @@ html, body {
 .card-header {
     background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
     color: white;
-    padding: 15px 20px;
+    padding: 12px 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -152,8 +132,10 @@ html, body {
     z-index: 10;
     background-color: #fff;
     border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 10px;
-    margin-bottom: 5px;
+    padding-bottom: 8px;
+    margin-bottom: 3px;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .card-header-left {
@@ -204,7 +186,7 @@ html, body {
 }
 
 .card-content {
-    padding: 15px;
+    padding: 12px;
     overflow-y: auto;
     flex: 1;
 }
@@ -249,7 +231,7 @@ html, body {
 
 .tab-content {
     display: none;
-    padding: 20px;
+    padding: 15px;
 }
 
 .tab-content.active {
@@ -1056,10 +1038,10 @@ html, body {
 
 /* Footer */
 .app-footer {
-    margin-top: 15px;
+    margin-top: 10px;
     background: #1e293b;
     color: white;
-    padding: 15px 20px;
+    padding: 12px 15px;
     border-radius: 12px;
     display: flex;
     justify-content: space-between;
@@ -1410,6 +1392,35 @@ html, body {
     display: block !important;
 }
 
+/* Desktop schedule header fixes */
+@media (min-width: 769px) {
+    /* Fix Today's Schedule header cramping in narrow column */
+    .schedule-container .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+    
+    .schedule-container .card-header-left,
+    .schedule-container .card-header-right {
+        width: 100%;
+    }
+    
+    .schedule-container .card-header-right {
+        justify-content: flex-start;
+    }
+    
+    .schedule-container .time-badge {
+        font-size: 0.75rem;
+        padding: 3px 6px;
+    }
+    
+    .schedule-container .card-title {
+        font-size: 1rem;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     html, body {
@@ -1489,14 +1500,25 @@ html, body {
         height: 16px;
     }
     
-    /* Adjust dashboard header */
-    .dashboard-header {
-        margin-bottom: 15px;
+    /* Fix card header cramping on mobile */
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
     }
     
-    .dashboard-title {
-        font-size: 1.5rem;
+    .card-header-left,
+    .card-header-right {
+        width: 100%;
+        justify-content: space-between;
     }
+    
+    .card-header-right {
+        justify-content: flex-end;
+    }
+    
+
     
     /* Adjust footer for mobile */
     .app-footer {
@@ -1560,13 +1582,7 @@ html, body {
         height: 14px;
     }
     
-    .dashboard-title {
-        font-size: 1.3rem;
-    }
-    
-    .date-display {
-        font-size: 0.8rem;
-    }
+
     
     .task-name {
         font-size: 1.2rem;
