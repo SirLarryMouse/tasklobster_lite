@@ -1420,6 +1420,9 @@ html, body {
     
     .header-content {
         padding: 0;
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
     }
     
     .logo-text {
@@ -1433,11 +1436,32 @@ html, body {
     .add-task-btn {
         padding: 8px 12px;
         font-size: 0.9rem;
+        width: 100%;
+        max-width: 300px;
     }
     
     .add-task-btn svg {
         width: 14px;
         height: 14px;
+    }
+    
+    /* Current Focus section responsiveness */
+    .task-actions {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin: 15px 0;
+    }
+    
+    .task-actions .btn {
+        font-size: 0.85rem;
+        padding: 10px 8px;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .task-actions .btn svg {
+        width: 16px;
+        height: 16px;
     }
     
     /* Adjust dashboard header */
@@ -1469,5 +1493,65 @@ html, body {
     .upgrade-btn {
         font-size: 0.75rem;
         padding: 6px 10px;
+    }
+}
+
+/* Smaller mobile screens */
+@media (max-width: 480px) {
+    .header-content {
+        padding: 0 10px;
+    }
+    
+    .logo-text {
+        font-size: 1.2rem;
+    }
+    
+    .add-task-btn {
+        font-size: 0.8rem;
+        padding: 10px 15px;
+    }
+    
+    .add-task-btn svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    /* Stack task actions vertically on very small screens */
+    .task-actions {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    
+    .task-actions .btn {
+        font-size: 0.8rem;
+        padding: 12px 15px;
+        flex-direction: row;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .task-actions .btn svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .dashboard-title {
+        font-size: 1.3rem;
+    }
+    
+    .date-display {
+        font-size: 0.8rem;
+    }
+    
+    .task-name {
+        font-size: 1.2rem;
+    }
+    
+    .card-content {
+        padding: 12px;
+    }
+    
+    .mobile-panel-content {
+        padding: 15px;
     }
 }

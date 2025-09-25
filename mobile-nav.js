@@ -167,14 +167,33 @@ function bindMobileTaskManagerEvents() {
             if (e.target.classList.contains('task-checkbox')) return;
             
             const taskId = item.dataset.taskId;
-            if (taskId && taskId !== currentTaskId) {
+            if (taskId && taskId !== window.currentTaskId) {
                 // Close mobile panel first
                 closeMobilePanel();
                 // Then switch to task
-                setTimeout(() => switchToTask(taskId), 300);
+                setTimeout(() => {
+                    if (typeof window.switchToTask === 'function') {
+                        window.switchToTask(taskId);
+                    }
+                }, 300);
             }
         });
     });
+    
+    // Re-bind import/export buttons
+    const mobileImportBtn = document.querySelector('#mobile-tasks-content #mobile-import-btn');
+    const mobileExportBtn = document.querySelector('#mobile-tasks-content #mobile-export-btn');
+    const mobileTimesheetBtn = document.querySelector('#mobile-tasks-content #mobile-timesheet-btn');
+    
+    if (mobileImportBtn && typeof window.importTasks === 'function') {
+        mobileImportBtn.addEventListener('click', window.importTasks);
+    }
+    if (mobileExportBtn && typeof window.exportTasks === 'function') {
+        mobileExportBtn.addEventListener('click', window.exportTasks);
+    }
+    if (mobileTimesheetBtn && typeof window.generateTimesheet === 'function') {
+        mobileTimesheetBtn.addEventListener('click', window.generateTimesheet);
+    }
 }
 
 // Render schedule in mobile view
@@ -190,6 +209,10 @@ function renderMobileSchedule(container) {
     // Get tasks for today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    // Access global tasks array
+    const tasks = window.tasks || [];
+    const currentTaskId = window.currentTaskId;
     
     const todayTasks = tasks.filter(task => {
         if (!task.scheduledTime) return false;
@@ -218,7 +241,32 @@ function renderMobileSchedule(container) {
             className = 'completed-task';
         }
         
-        createScheduleItem(container, task, topPosition, Math.max(height, 2), className);
+        // Use global createScheduleItem function if available
+        if (typeof window.createScheduleItem === 'function') {
+            window.createScheduleItem(container, task, topPosition, Math.max(height, 2), className);
+        } else {
+            // Fallback: create a simple schedule item
+            createSimpleScheduleItem(container, task, topPosition, Math.max(height, 2), className);
+        }
     });
 }
 
+// Fallback function to create simple schedule items
+function createSimpleScheduleItem(container, task, topPosition, height, className) {
+    const scheduleItem = document.createElement('div');
+    scheduleItem.className = `schedule-item ${className}`;
+    scheduleItem.style.top = `${topPosition}%`;
+    scheduleItem.style.height = `${height}%`;
+    scheduleItem.dataset.taskId = task.id;
+    
+    const taskTime = new Date(task.scheduledTime);
+    const timeString = taskTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    scheduleItem.innerHTML = `
+        <div class="schedule-item-time">${timeString}</div>
+        <div class="schedule-item-name">${task.name}</div>
+        <div class="schedule-item-duration">${task.duration}min</div>
+    `;
+    
+    container.appendChild(scheduleItem);
+}
