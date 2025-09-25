@@ -14,8 +14,7 @@ body {
 
 html, body {
     height: 100%;
-    overflow-x: hidden; /* Prevent horizontal scroll */
-    overflow-y: auto; /* Allow vertical scroll */
+    overflow: hidden; /* Desktop: no scrollbars on body */
 }
 
 /* Header styles */
@@ -1430,7 +1429,10 @@ html, body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    /* Removed conflicting overflow rule - handled globally now */
+    html, body {
+        overflow-x: hidden; /* Prevent horizontal scroll */
+        overflow-y: auto; /* Allow vertical scroll on mobile */
+    }
     
     .container {
         height: auto;
