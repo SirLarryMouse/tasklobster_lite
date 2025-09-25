@@ -14,7 +14,8 @@ body {
 
 html, body {
     height: 100%;
-    overflow: hidden;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    overflow-y: auto; /* Allow vertical scroll */
 }
 
 /* Header styles */
@@ -105,7 +106,8 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    overflow: hidden;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    overflow-y: auto; /* Allow vertical scroll */
     max-height: 100%;
 }
 
@@ -114,11 +116,13 @@ html, body {
     background: white;
     border-radius: 12px;
     border: 1px solid #e2e8f0;
-    overflow: hidden;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    overflow-y: auto; /* Allow vertical scroll */
     box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.1), -10px -10px 20px rgba(255, 255, 255, 0.95);
     max-height: 100%;
     display: flex;
     flex-direction: column;
+    max-width: 100%; /* Ensure card doesn't exceed container width */
 }
 
 .card-header {
@@ -187,8 +191,11 @@ html, body {
 
 .card-content {
     padding: 12px;
-    overflow-y: auto;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    overflow-y: auto; /* Allow vertical scroll */
     flex: 1;
+    max-width: 100%; /* Ensure content doesn't exceed card width */
+    box-sizing: border-box; /* Include padding in width calculation */
 }
 
 /* Tab styles */
@@ -1423,9 +1430,7 @@ html, body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    html, body {
-        overflow: auto;
-    }
+    /* Removed conflicting overflow rule - handled globally now */
     
     .container {
         height: auto;
