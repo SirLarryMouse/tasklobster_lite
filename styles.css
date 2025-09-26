@@ -1447,18 +1447,18 @@ html, body {
         overflow: visible; /* Allow content to flow naturally on mobile */
     }
     
-    /* Remove scrollbars from task sections and cards on mobile - let body handle it */
-    .task-section {
+    /* Only remove scrollbars from mobile panel content - keep task sections functional */
+    .mobile-panel-content .task-section {
         overflow: visible;
         max-height: none;
     }
     
-    .card {
+    .mobile-panel-content .card {
         overflow: visible;
         max-height: none;
     }
     
-    .card-content {
+    .mobile-panel-content .card-content {
         overflow: visible;
     }
     
