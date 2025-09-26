@@ -1369,7 +1369,7 @@ html, body {
 .mobile-panel-content {
     padding: 20px;
     flex: 1;
-    overflow-y: visible; /* Let body handle scrolling instead */
+    overflow-y: auto; /* Mobile panels handle their own scrolling */
     background: white;
 }
 
@@ -1381,8 +1381,8 @@ html, body {
 }
 
 .mobile-panel-content .schedule-container {
-    height: auto; /* Let content determine height */
-    overflow-y: visible; /* Let body handle scrolling */
+    height: 70vh; /* Fixed height for scrollable area */
+    overflow-y: auto; /* Schedule container handles its own scrolling */
 }
 
 .mobile-panel-content .time-column,
@@ -1430,15 +1430,14 @@ html, body {
 /* Responsive Design */
 @media (max-width: 768px) {
     html, body {
-        overflow-x: hidden; /* Prevent horizontal scroll */
-        overflow-y: auto; /* Allow vertical scroll on mobile */
+        overflow: hidden; /* Prevent body scrolling - let container handle it */
     }
     
     .container {
-        height: auto;
-        min-height: calc(100vh - 73px);
+        height: calc(100vh - 73px); /* Fixed height like desktop */
         padding-bottom: 100px; /* Space for footer */
-        overflow: visible; /* Let body handle scrolling on mobile */
+        overflow-y: auto; /* Container handles scrolling on mobile */
+        overflow-x: hidden; /* Prevent horizontal scroll */
     }
     
     .dashboard-layout {
@@ -1447,20 +1446,7 @@ html, body {
         overflow: visible; /* Allow content to flow naturally on mobile */
     }
     
-    /* Only remove scrollbars from mobile panel content - keep task sections functional */
-    .mobile-panel-content .task-section {
-        overflow: visible;
-        max-height: none;
-    }
-    
-    .mobile-panel-content .card {
-        overflow: visible;
-        max-height: none;
-    }
-    
-    .mobile-panel-content .card-content {
-        overflow: visible;
-    }
+    /* Mobile panels are full-screen overlays - they handle their own scrolling */
     
     /* Hide Task Manager and Schedule on mobile by default */
     #task-manager,
