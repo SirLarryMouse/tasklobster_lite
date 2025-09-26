@@ -1369,7 +1369,7 @@ html, body {
 .mobile-panel-content {
     padding: 20px;
     flex: 1;
-    overflow-y: auto;
+    overflow-y: visible; /* Let body handle scrolling instead */
     background: white;
 }
 
@@ -1381,8 +1381,8 @@ html, body {
 }
 
 .mobile-panel-content .schedule-container {
-    height: 70vh;
-    overflow-y: auto;
+    height: auto; /* Let content determine height */
+    overflow-y: visible; /* Let body handle scrolling */
 }
 
 .mobile-panel-content .time-column,
@@ -1445,6 +1445,21 @@ html, body {
         grid-template-columns: 1fr;
         gap: 15px;
         overflow: visible; /* Allow content to flow naturally on mobile */
+    }
+    
+    /* Remove scrollbars from task sections and cards on mobile - let body handle it */
+    .task-section {
+        overflow: visible;
+        max-height: none;
+    }
+    
+    .card {
+        overflow: visible;
+        max-height: none;
+    }
+    
+    .card-content {
+        overflow: visible;
     }
     
     /* Hide Task Manager and Schedule on mobile by default */
