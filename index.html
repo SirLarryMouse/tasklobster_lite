@@ -7,20 +7,14 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header>
-        <div class="logo">
-            <div class="logo-text">
-                <span class="red">Task</span><span class="blue">Lobster</span>
-                <span class="version">Free Version</span>
-            </div>
-        </div>
-    </header>
-
-    <div class="container">
-        <div class="dashboard-header">
-            <div>
-                <h1 class="dashboard-title">Task Dashboard</h1>
-                <div class="date-display" id="current-date">Wednesday, April 23, 2025</div>
+    <!-- Header Section -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-text">
+                    <span class="red">Task</span><span class="blue">Lobster</span>
+                    <span class="version">Free Version</span>
+                </div>
             </div>
             <button class="add-task-btn" id="add-task-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -29,11 +23,17 @@
                 Add New Task
             </button>
         </div>
+    </header>
+
+    <div class="container">
+
 
         <div class="dashboard-layout">
             <div class="task-section">
-                <!-- Current Task Card -->
-                <div id="current-task-card" class="card" style="display: none;">
+                <!-- Current Focus Section -->
+                <section id="current-focus" class="current-focus-section">
+                    <!-- Current Task Card -->
+                    <div id="current-task-card" class="card" style="display: none;">
                     <div class="card-header">
                         <div class="card-header-left">
                             <div class="icon-bg">
@@ -124,15 +124,18 @@
                     </div>
                 </div>
 
-                <!-- No Tasks Message (shown when no tasks exist) -->
-                <div id="no-tasks-message" class="no-tasks">
-                    <div class="no-tasks-icon">📋</div>
-                    <div class="no-tasks-text">No tasks added yet</div>
-                    <div class="no-tasks-subtext">Click the "Add New Task" button to create your first task.</div>
-                </div>
+                    <!-- No Tasks Message (shown when no tasks exist) -->
+                    <div id="no-tasks-message" class="no-tasks">
+                        <div class="no-tasks-icon">📋</div>
+                        <div class="no-tasks-text">No tasks added yet</div>
+                        <div class="no-tasks-subtext">Click the "Add New Task" button to create your first task.</div>
+                    </div>
+                </section>
 
-                <!-- Tasks Container -->
-                <div id="tasks-container" class="card" style="display: none;">
+                <!-- Task Manager Section -->
+                <section id="task-manager" class="task-manager-section">
+                    <!-- Tasks Container -->
+                    <div id="tasks-container" class="card" style="display: none;">
                     <div class="card-header">
                         <div class="card-header-left">
                             <div class="icon-bg">
@@ -222,10 +225,12 @@
                         </div>
                     </div>
                 </div>
+                </section>
             </div>
 
-            <!-- Schedule -->
-            <div class="card schedule-container">
+            <!-- Today's Schedule Section -->
+            <section id="todays-schedule" class="todays-schedule-section">
+                <div class="card schedule-container">
                 <div class="card-header">
                     <div class="card-header-left">
                         <div class="icon-bg">
@@ -258,11 +263,12 @@
                 <div class="schedule-content" id="schedule-content">
                     <!-- Hour dividers and schedule items will be added here via JavaScript -->
                 </div>
-            </div>
+                </div>
+            </section>
         </div>
 
-        <!-- Footer with stats -->
-        <div class="app-footer">
+        <!-- Footer Section -->
+        <footer class="app-footer">
             <div class="footer-stat">
                 <div class="stat-icon-bg">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -289,7 +295,30 @@
                 </svg>
                 Upgrade to Pro
             </button>
-        </div>
+            
+            <!-- Mobile Navigation Menu -->
+            <nav class="mobile-footer-menu" id="mobile-footer-menu" role="tablist" aria-label="Mobile navigation">
+                <button class="mobile-tab" id="mobile-tasks-tab" role="tab" aria-controls="task-manager" aria-selected="false">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    Tasks
+                </button>
+                <button class="mobile-tab" id="mobile-schedule-tab" role="tab" aria-controls="todays-schedule" aria-selected="false">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    Schedule
+                </button>
+            </nav>
+        </footer>
     </div>
 
     <!-- Add Task Modal -->
@@ -474,6 +503,49 @@
         </div>
     </div>
 
+    <!-- Mobile Panel Overlays -->
+    <div class="mobile-panel-overlay" id="mobile-tasks-panel">
+        <div class="mobile-panel" role="tabpanel" aria-labelledby="mobile-tasks-tab">
+            <div class="mobile-panel-header">
+                <h2 class="mobile-panel-title">Task Manager</h2>
+                <button class="mobile-panel-close" aria-label="Close panel">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="mobile-panel-content" id="mobile-tasks-content">
+                <!-- Task Manager content will be cloned here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="mobile-panel-overlay" id="mobile-schedule-panel">
+        <div class="mobile-panel" role="tabpanel" aria-labelledby="mobile-schedule-tab">
+            <div class="mobile-panel-header">
+                <h2 class="mobile-panel-title">Today's Schedule</h2>
+                <button class="mobile-panel-close" aria-label="Close panel">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="mobile-panel-content" id="mobile-schedule-content">
+                <!-- Schedule content will be cloned here -->
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
+    <script src="mobile-nav.js"></script>
+    <script>
+        // Initialize mobile navigation after DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add a small delay to ensure main script is initialized
+            setTimeout(initMobileNavigation, 100);
+        });
+    </script>
 </body>
 </html>

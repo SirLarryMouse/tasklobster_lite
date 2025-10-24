@@ -14,15 +14,23 @@ body {
 
 html, body {
     height: 100%;
-    overflow: hidden;
+    overflow: hidden; /* Desktop: no scrollbars on body */
 }
 
 /* Header styles */
-header {
+.app-header {
     background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
     color: white;
     padding: 15px 20px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .logo {
@@ -56,30 +64,10 @@ header {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 15px;
     height: calc(100vh - 53px); /* Subtract header height */
     display: flex;
     flex-direction: column;
-}
-
-/* Dashboard header */
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.dashboard-title {
-    font-size: 2rem;
-    color: #1e293b;
-    font-weight: bold;
-}
-
-.date-display {
-    color: #64748b;
-    font-size: 0.9rem;
-    margin-top: 5px;
 }
 
 .add-task-btn {
@@ -106,7 +94,7 @@ header {
 .dashboard-layout {
     display: grid;
     grid-template-columns: 3fr 1fr;
-    gap: 20px;
+    gap: 15px;
     flex: 1;
     min-height: 0; /* Allow children to determine the size */
     overflow: hidden;
@@ -116,8 +104,9 @@ header {
 .task-section {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    overflow: hidden;
+    gap: 12px;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    overflow-y: auto; /* Allow vertical scroll */
     max-height: 100%;
 }
 
@@ -126,17 +115,19 @@ header {
     background: white;
     border-radius: 12px;
     border: 1px solid #e2e8f0;
-    overflow: hidden;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    overflow-y: auto; /* Allow vertical scroll */
     box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.1), -10px -10px 20px rgba(255, 255, 255, 0.95);
     max-height: 100%;
     display: flex;
     flex-direction: column;
+    max-width: 100%; /* Ensure card doesn't exceed container width */
 }
 
 .card-header {
     background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
     color: white;
-    padding: 15px 20px;
+    padding: 12px 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -144,8 +135,10 @@ header {
     z-index: 10;
     background-color: #fff;
     border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 10px;
-    margin-bottom: 5px;
+    padding-bottom: 8px;
+    margin-bottom: 3px;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .card-header-left {
@@ -196,9 +189,12 @@ header {
 }
 
 .card-content {
-    padding: 15px;
-    overflow-y: auto;
+    padding: 12px;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    overflow-y: auto; /* Allow vertical scroll */
     flex: 1;
+    max-width: 100%; /* Ensure content doesn't exceed card width */
+    box-sizing: border-box; /* Include padding in width calculation */
 }
 
 /* Tab styles */
@@ -241,7 +237,7 @@ header {
 
 .tab-content {
     display: none;
-    padding: 20px;
+    padding: 15px;
 }
 
 .tab-content.active {
@@ -1048,10 +1044,10 @@ header {
 
 /* Footer */
 .app-footer {
-    margin-top: 15px;
+    margin-top: 10px;
     background: #1e293b;
     color: white;
-    padding: 15px 20px;
+    padding: 12px 15px;
     border-radius: 12px;
     display: flex;
     justify-content: space-between;
@@ -1260,4 +1256,353 @@ header {
 .custom-tooltip .tooltip-time {
   margin-top: 5px;
   font-size: 12px;
+}
+
+/* Mobile Footer Menu */
+.mobile-footer-menu {
+    display: none;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #334155;
+}
+
+.mobile-tab {
+    background: #334155;
+    color: #cbd5e1;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s ease;
+    flex: 1;
+    font-size: 0.8rem;
+}
+
+.mobile-tab:hover,
+.mobile-tab[aria-selected="true"] {
+    background: #1e40af;
+    color: white;
+}
+
+.mobile-tab svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Mobile Panel Overlay */
+.mobile-panel-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.mobile-panel-overlay.is-open {
+    display: flex;
+    opacity: 1;
+}
+
+.mobile-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.mobile-panel-overlay.is-open .mobile-panel {
+    transform: translateY(0);
+}
+
+.mobile-panel-header {
+    background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.mobile-panel-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.mobile-panel-close {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.mobile-panel-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.mobile-panel-content {
+    padding: 20px;
+    flex: 1;
+    overflow-y: auto; /* Mobile panels handle their own scrolling */
+    background: white;
+}
+
+/* Ensure mobile panel content is visible */
+.mobile-panel-content .card {
+    margin-bottom: 0;
+    border: none;
+    box-shadow: none;
+}
+
+.mobile-panel-content .schedule-container {
+    height: 70vh; /* Fixed height for scrollable area */
+    overflow-y: auto; /* Schedule container handles its own scrolling */
+}
+
+.mobile-panel-content .time-column,
+.mobile-panel-content .schedule-content {
+    display: block !important;
+}
+
+.mobile-panel-content .tab-content {
+    padding: 15px 0;
+}
+
+.mobile-panel-content .tab-content.active {
+    display: block !important;
+}
+
+/* Desktop schedule header fixes */
+@media (min-width: 769px) {
+    /* Fix Today's Schedule header cramping in narrow column */
+    .schedule-container .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+    
+    .schedule-container .card-header-left,
+    .schedule-container .card-header-right {
+        width: 100%;
+    }
+    
+    .schedule-container .card-header-right {
+        justify-content: flex-start;
+    }
+    
+    .schedule-container .time-badge {
+        font-size: 0.75rem;
+        padding: 3px 6px;
+    }
+    
+    .schedule-container .card-title {
+        font-size: 1rem;
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    html, body {
+        overflow: hidden; /* Prevent body scrolling - let container handle it */
+    }
+    
+    .container {
+        height: calc(100vh - 73px); /* Fixed height like desktop */
+        padding-bottom: 100px; /* Space for footer */
+        overflow-y: auto; /* Container handles scrolling on mobile */
+        overflow-x: hidden; /* Prevent horizontal scroll */
+    }
+    
+    .dashboard-layout {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        overflow: visible; /* Allow content to flow naturally on mobile */
+    }
+    
+    /* Mobile panels are full-screen overlays - they handle their own scrolling */
+    
+    /* Hide Task Manager and Schedule on mobile by default */
+    #task-manager,
+    #todays-schedule {
+        display: none;
+    }
+    
+    /* Show mobile footer menu */
+    .mobile-footer-menu {
+        display: flex;
+    }
+    
+    /* Adjust header for mobile */
+    .app-header {
+        padding: 12px 15px;
+    }
+    
+    .header-content {
+        padding: 0;
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    
+    .logo-text {
+        font-size: 1.3rem;
+    }
+    
+    .logo-text .version {
+        display: none;
+    }
+    
+    .add-task-btn {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .add-task-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    /* Current Focus section responsiveness */
+    .task-actions {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin: 15px 0;
+    }
+    
+    .task-actions .btn {
+        font-size: 0.85rem;
+        padding: 10px 8px;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .task-actions .btn svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    /* Fix card header cramping on mobile */
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+    }
+    
+    .card-header-left,
+    .card-header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .card-header-right {
+        justify-content: flex-end;
+    }
+    
+
+    
+    /* Adjust footer for mobile */
+    .app-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin: 0;
+        border-radius: 0;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 100;
+    }
+    
+    .footer-stat {
+        font-size: 0.8rem;
+    }
+    
+    .upgrade-btn {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+}
+
+/* Smaller mobile screens */
+@media (max-width: 480px) {
+    .header-content {
+        padding: 0 10px;
+    }
+    
+    .logo-text {
+        font-size: 1.2rem;
+    }
+    
+    .add-task-btn {
+        font-size: 0.8rem;
+        padding: 10px 15px;
+    }
+    
+    .add-task-btn svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    /* Stack task actions vertically on very small screens */
+    .task-actions {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    
+    .task-actions .btn {
+        font-size: 0.8rem;
+        padding: 12px 15px;
+        flex-direction: row;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .task-actions .btn svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+
+    
+    .task-name {
+        font-size: 1.2rem;
+    }
+    
+    .card-content {
+        padding: 12px;
+    }
+    
+    .mobile-panel-content {
+        padding: 15px;
+    }
 }

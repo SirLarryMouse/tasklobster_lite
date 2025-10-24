@@ -153,7 +153,7 @@ function init() {
 function updateDateDisplay() {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const dateString = new Date().toLocaleDateString('en-US', options);
-    document.getElementById('current-date').textContent = dateString;
+    const currentDateElement = document.getElementById('current-date'); if (currentDateElement) { currentDateElement.textContent = dateString; }
 }
 
 // Setup tab navigation
