@@ -1,4 +1,4 @@
-// Global variables
+// ========== Global State ==========
 let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
 let currentTaskId = localStorage.getItem('currentTaskId') || null;
 let timeBlocks = JSON.parse(localStorage.getItem('timeBlocks')) || [];
@@ -9,1835 +9,1170 @@ let isPaused = localStorage.getItem('isPaused') === 'true';
 let pauseReason = null;
 let breakTimerInterval = null;
 let breakDuration = 0;
+let dayStarted = localStorage.getItem('dayStarted') === 'true';
 
-// Priority names
-const PRIORITIES = {
-    1: 'Lowest',
-    2: 'Low',
-    3: 'Medium',
-    4: 'High',
-    5: 'Urgent'
-};
+const PRIORITIES = { 1: 'Lowest', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Urgent' };
+const PRIORITY_CLASSES = { 1: 'lowest', 2: 'low', 3: 'medium', 4: 'high', 5: 'urgent' };
 
-// Add a custom tooltip element to the DOM
-const tooltipElement = document.createElement('div');
-tooltipElement.className = 'custom-tooltip';
-document.body.appendChild(tooltipElement);
-
-// Variables to track tooltip state
-let tooltipVisible = false;
-let tooltipTimeout = null;
-
-// Function to show tooltip
-function showTooltip(content, event) {
-    // Clear any existing timeout
-    if (tooltipTimeout) {
-        clearTimeout(tooltipTimeout);
-    }
-    
-    // Set tooltip content
-    tooltipElement.innerHTML = content;
-    
-    // Position tooltip near the mouse
-    const x = event.clientX + 15;
-    const y = event.clientY + 15;
-    
-    // Ensure tooltip stays within viewport
-    const tooltipRect = tooltipElement.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    // Adjust position if needed
-    const adjustedX = Math.min(x, viewportWidth - tooltipRect.width - 20);
-    const adjustedY = Math.min(y, viewportHeight - tooltipRect.height - 20);
-    
-    // Set position
-    tooltipElement.style.left = `${adjustedX}px`;
-    tooltipElement.style.top = `${adjustedY}px`;
-    
-    // Show tooltip
-    tooltipElement.classList.add('visible');
-    tooltipVisible = true;
-}
-
-// Function to hide tooltip
-function hideTooltip() {
-    if (tooltipTimeout) {
-        clearTimeout(tooltipTimeout);
-    }
-    
-    tooltipTimeout = setTimeout(() => {
-        tooltipElement.classList.remove('visible');
-        tooltipVisible = false;
-    }, 200);
-}
-
-// Initialize the app
+// ========== Init ==========
 function init() {
-    // Set current date
-    updateDateDisplay();
-    
-    // Setup event listeners
+    updateHeaderTime();
+    updateHeaderDate();
+    updateGreeting();
+    setInterval(updateHeaderTime, 30000);
+
+    // Dark mode
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+    document.getElementById('dark-mode-toggle').addEventListener('click', toggleDarkMode);
+
+    // Style theme
+    const savedStyle = localStorage.getItem('appStyle') || 'executive';
+    document.documentElement.setAttribute('data-style', savedStyle);
+    setupStyleToggle();
+
+    // Start Day / End Day
+    document.getElementById('start-day-btn').addEventListener('click', startDay);
+    document.getElementById('start-day-add-btn').addEventListener('click', showAddTaskModal);
+    document.getElementById('end-day-btn').addEventListener('click', showEndDayModal);
+    document.getElementById('confirm-end-day-btn').addEventListener('click', confirmEndDay);
+    document.getElementById('cancel-end-day-btn').addEventListener('click', () => {
+        document.getElementById('end-day-modal').style.display = 'none';
+    });
+
+    // Task actions
     document.getElementById('add-task-btn').addEventListener('click', showAddTaskModal);
     document.getElementById('cancel-task-btn').addEventListener('click', hideAddTaskModal);
+    document.getElementById('cancel-task-btn-2').addEventListener('click', hideAddTaskModal);
     document.getElementById('save-task-btn').addEventListener('click', saveTask);
     document.getElementById('pause-btn').addEventListener('click', handlePause);
     document.getElementById('complete-btn').addEventListener('click', completeCurrentTask);
     document.getElementById('reschedule-btn').addEventListener('click', rescheduleCurrentTask);
     document.getElementById('distracted-btn').addEventListener('click', markDistracted);
+
+    // Break
     document.getElementById('resume-break-btn').addEventListener('click', resumeTask);
     document.getElementById('save-break-notes-btn').addEventListener('click', saveBreakNotes);
     document.getElementById('skip-break-notes-btn').addEventListener('click', skipBreakNotes);
+
+    // Task switch
     document.getElementById('confirm-switch-btn').addEventListener('click', function() {
         const action = this.dataset.action || 'switch';
-        
         if (action === 'switch') {
             const switchToId = this.dataset.switchToId;
-            if (switchToId) {
-                switchToTask(switchToId);
-            }
+            if (switchToId) switchToTask(switchToId);
         } else if (action === 'reschedule') {
             const taskId = this.dataset.taskId;
-            if (taskId) {
-                completeReschedule(taskId);
-            }
+            if (taskId) completeReschedule(taskId);
         }
     });
     document.getElementById('cancel-switch-btn').addEventListener('click', cancelTaskSwitch);
-    
-    // Progress slider
     document.getElementById('progress-slider').addEventListener('input', function() {
         document.getElementById('progress-value').textContent = `${this.value}%`;
     });
-    
-    // Tab navigation
-    setupTabs();
-    
-    // Priority slider
-    setupPrioritySlider();
-    
-    // Duration buttons
-    setupDurationButtons();
-    
-    // Pause reason modal
-    setupPauseReasonModal();
-    
+
+    // Options panel
+    document.getElementById('options-toggle').addEventListener('click', openOptionsPanel);
+    document.getElementById('options-close').addEventListener('click', closeOptionsPanel);
+    document.getElementById('options-panel-overlay').addEventListener('click', function(e) {
+        if (e.target === this) closeOptionsPanel();
+    });
+
     // Import/Export
     document.getElementById('import-btn').addEventListener('click', importTasks);
     document.getElementById('export-btn').addEventListener('click', exportTasks);
     document.getElementById('timesheet-btn').addEventListener('click', generateTimesheet);
     document.getElementById('copy-export-btn').addEventListener('click', copyExportText);
-    document.getElementById('close-timesheet-btn').addEventListener('click', hideTimesheetModal);
+    document.getElementById('close-timesheet-btn').addEventListener('click', () => {
+        document.getElementById('timesheet-modal').style.display = 'none';
+    });
+    if (document.getElementById('close-timesheet-close')) {
+        document.getElementById('close-timesheet-close').addEventListener('click', () => {
+            document.getElementById('timesheet-modal').style.display = 'none';
+        });
+    }
     document.getElementById('download-timesheet-btn').addEventListener('click', downloadTimesheet);
-    
-    // Setup time tracking
+
+    // Pause modal close buttons
+    document.getElementById('cancel-pause-btn').addEventListener('click', () => {
+        document.getElementById('pause-reason-modal').style.display = 'none';
+    });
+    if (document.getElementById('cancel-pause-close')) {
+        document.getElementById('cancel-pause-close').addEventListener('click', () => {
+            document.getElementById('pause-reason-modal').style.display = 'none';
+        });
+    }
+    document.getElementById('confirm-pause-btn').addEventListener('click', confirmPause);
+
+    setupDurationButtons();
+    setupPrioritySlider();
+    setupPauseReasonModal();
+
+    // Time tracking
     setInterval(updateTimeTracking, 1000);
-    
-    // Initialize the schedule
-    initializeSchedule();
-    
-    // Render tasks
+
+    // Show correct screen
+    if (dayStarted) {
+        showMainContent();
+    } else {
+        showStartDayScreen();
+    }
+
     renderTasks();
-    
-    // Update current time
-    updateCurrentTime();
-    setInterval(updateCurrentTime, 60000); // Update every minute
-    
-    // Start tracking current task if one exists
-    if (currentTaskId && !isPaused) {
+
+    if (currentTaskId && !isPaused && dayStarted) {
         startTaskTracking(currentTaskId);
     }
 }
 
-// Update the date display
-function updateDateDisplay() {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const dateString = new Date().toLocaleDateString('en-US', options);
-    document.getElementById('current-date').textContent = dateString;
+// ========== Dark Mode ==========
+function toggleDarkMode() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
 }
 
-// Setup tab navigation
-function setupTabs() {
-    const tabs = document.querySelectorAll('.card-tab');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            // Remove active class from all tabs
-            tabs.forEach(t => t.classList.remove('active'));
-            
-            // Add active class to clicked tab
-            tab.classList.add('active');
-            
-            // Show corresponding content
-            const tabId = tab.dataset.tab;
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(`${tabId}-tab`).classList.add('active');
+// ========== Style Toggle ==========
+function setupStyleToggle() {
+    const btns = document.querySelectorAll('.style-toggle-btn');
+    const current = localStorage.getItem('appStyle') || 'executive';
+    btns.forEach(btn => {
+        if (btn.dataset.style === current) btn.classList.add('active');
+        btn.addEventListener('click', () => {
+            btns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.documentElement.setAttribute('data-style', btn.dataset.style);
+            localStorage.setItem('appStyle', btn.dataset.style);
         });
     });
 }
 
-// Setup priority slider
+// ========== Header ==========
+function updateHeaderTime() {
+    const now = new Date();
+    const h = now.getHours();
+    const m = now.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const dh = h % 12 || 12;
+    document.getElementById('header-time').textContent = `${dh}:${m < 10 ? '0' + m : m} ${ampm}`;
+}
+
+function updateHeaderDate() {
+    const options = { weekday: 'long', month: 'short', day: 'numeric' };
+    document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-US', options).toUpperCase();
+}
+
+function updateGreeting() {
+    const h = new Date().getHours();
+    let g = 'Good evening';
+    if (h < 12) g = 'Good morning';
+    else if (h < 17) g = 'Good afternoon';
+    document.getElementById('greeting').textContent = dayStarted ? `${g}, here's your day.` : `${g}.`;
+}
+
+// ========== Start Day / End Day ==========
+function showStartDayScreen() {
+    document.getElementById('start-day-screen').style.display = 'flex';
+    const mc = document.getElementById('main-content');
+    mc.classList.remove('active');
+    mc.style.display = 'none';
+    document.getElementById('end-day-btn').style.display = 'none';
+    const remaining = tasks.filter(t => !t.completed).length;
+    document.getElementById('start-day-task-count').textContent = remaining;
+}
+
+function showMainContent() {
+    document.getElementById('start-day-screen').style.display = 'none';
+    const mc = document.getElementById('main-content');
+    mc.style.display = '';
+    mc.classList.add('active');
+    document.getElementById('end-day-btn').style.display = 'flex';
+}
+
+function startDay() {
+    dayStarted = true;
+    localStorage.setItem('dayStarted', 'true');
+
+    // Record start-day time block
+    const now = new Date();
+    timeBlocks.push({
+        id: Date.now().toString(),
+        taskId: null,
+        reason: 'Day Started',
+        startTime: now.toISOString(),
+        endTime: now.toISOString(),
+        type: 'marker'
+    });
+    localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
+
+    showMainContent();
+    updateGreeting();
+    renderTasks();
+
+    // Auto-start first task if available
+    if (!currentTaskId) {
+        setNextCurrentTask();
+    }
+    if (currentTaskId && !isPaused) {
+        startTaskTracking(currentTaskId);
+    }
+    renderTasks();
+}
+
+function showEndDayModal() {
+    const completed = tasks.filter(t => t.completed).length;
+    const total = tasks.length;
+    const focusHours = Math.floor(focusTime / 60);
+    const focusMins = Math.round(focusTime % 60);
+    let focusStr = '';
+    if (focusHours > 0) focusStr += `${focusHours}h `;
+    focusStr += `${focusMins}m`;
+
+    document.getElementById('end-day-summary').textContent = completed === total && total > 0
+        ? 'All tasks completed. Great work today!'
+        : `You completed ${completed} of ${total} tasks today.`;
+    document.getElementById('end-day-stats').innerHTML = `Focus time: <strong>${focusStr}</strong>`;
+    document.getElementById('end-day-modal').style.display = 'flex';
+}
+
+function confirmEndDay() {
+    // End current task tracking
+    if (currentTaskId && !isPaused) {
+        endTaskTracking(currentTaskId, 'day-ended');
+    }
+
+    // Record end-day marker
+    const now = new Date();
+    timeBlocks.push({
+        id: Date.now().toString(),
+        taskId: null,
+        reason: 'Day Ended',
+        startTime: now.toISOString(),
+        endTime: now.toISOString(),
+        type: 'marker'
+    });
+    localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
+
+    // Export if checked
+    if (document.getElementById('end-day-export-timesheet').checked) {
+        downloadTimesheet();
+    }
+    if (document.getElementById('end-day-export-todo').checked) {
+        exportTasksSilent();
+    }
+
+    // Reset day
+    dayStarted = false;
+    localStorage.setItem('dayStarted', 'false');
+    isPaused = false;
+    localStorage.setItem('isPaused', 'false');
+    lastTimestamp = null;
+
+    document.getElementById('end-day-modal').style.display = 'none';
+    showStartDayScreen();
+    updateGreeting();
+}
+
+// ========== Briefing ==========
+function updateBriefing() {
+    const remaining = tasks.filter(t => !t.completed).length;
+    const el = document.getElementById('briefing-text');
+    if (remaining === 0 && tasks.length > 0) {
+        el.innerHTML = `All tasks completed. Nice work!`;
+    } else {
+        el.innerHTML = `You have <strong>${remaining} task${remaining !== 1 ? 's' : ''}</strong> remaining today.`;
+    }
+}
+
+// ========== Options Panel ==========
+function openOptionsPanel() {
+    document.getElementById('options-panel-overlay').classList.add('active');
+}
+
+function closeOptionsPanel() {
+    document.getElementById('options-panel-overlay').classList.remove('active');
+}
+
+// ========== Setup Helpers ==========
+function setupDurationButtons() {
+    const btns = document.querySelectorAll('.duration-btn');
+    const input = document.getElementById('task-duration-input');
+    btns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            btns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            input.value = btn.dataset.duration;
+        });
+    });
+    const def = document.querySelector('.duration-btn[data-duration="30"]');
+    if (def) def.classList.add('active');
+}
+
 function setupPrioritySlider() {
     const slider = document.getElementById('task-priority-input');
     const label = document.getElementById('priority-label');
-    
-    // Update label on slider change
     slider.addEventListener('input', () => {
-        const value = parseInt(slider.value);
-        label.textContent = PRIORITIES[value];
+        label.textContent = PRIORITIES[parseInt(slider.value)];
     });
 }
 
-// Setup duration buttons
-function setupDurationButtons() {
-    const durationBtns = document.querySelectorAll('.duration-btn');
-    const durationInput = document.getElementById('task-duration-input');
-    
-    durationBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Remove active class from all buttons
-            durationBtns.forEach(b => b.classList.remove('active'));
-            
-            // Add active class to clicked button
-            btn.classList.add('active');
-            
-            // Set duration value
-            durationInput.value = btn.dataset.duration;
-        });
-    });
-    
-    // Set default active button (30 min)
-    document.querySelector('.duration-btn[data-duration="30"]').classList.add('active');
-}
-
-// Setup pause reason modal
 function setupPauseReasonModal() {
-    const reasonBtns = document.querySelectorAll('.pause-reason-btn');
-    const otherReasonGroup = document.getElementById('other-reason-group');
-    
-    // Setup reason buttons
-    reasonBtns.forEach(btn => {
+    const btns = document.querySelectorAll('.pause-reason-btn');
+    btns.forEach(btn => {
         btn.addEventListener('click', () => {
-            // Remove active class from all buttons
-            reasonBtns.forEach(b => b.classList.remove('active'));
-            
-            // Add active class to clicked button
+            btns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
-            // Show other reason input if "Other" is selected
-            if (btn.dataset.reason === 'other') {
-                otherReasonGroup.style.display = 'block';
-            } else {
-                otherReasonGroup.style.display = 'none';
-            }
+            document.getElementById('other-reason-group').style.display =
+                btn.dataset.reason === 'other' ? 'block' : 'none';
         });
     });
-    
-    // Setup cancel button
-    document.getElementById('cancel-pause-btn').addEventListener('click', () => {
-        document.getElementById('pause-reason-modal').style.display = 'none';
-    });
-    
-    // Setup confirm button
-    document.getElementById('confirm-pause-btn').addEventListener('click', confirmPause);
 }
 
-// Initialize the schedule with hour dividers and time labels
-function initializeSchedule() {
-    const timeColumn = document.querySelector('.time-column');
-    const scheduleContent = document.getElementById('schedule-content');
-    
-    // Clear previous content
-    timeColumn.innerHTML = '';
-    scheduleContent.innerHTML = '';
-    
-    // Add time labels and hour dividers
-    for (let hour = 0; hour <= 23; hour++) {
-        // Add time label
-        const timeLabel = document.createElement('div');
-        timeLabel.className = 'time-label';
-        timeLabel.style.top = `${(hour) * (100/24)}%`; // Distribute evenly across 24 hours
-        timeLabel.textContent = hour > 12 ? `${hour-12}pm` : hour === 12 ? '12pm' : hour === 0 ? '12am' : `${hour}am`;
-        timeColumn.appendChild(timeLabel);
-        
-        // Add hour divider
-        const hourDivider = document.createElement('div');
-        hourDivider.className = 'hour-divider';
-        hourDivider.style.top = `${(hour) * (100/24)}%`;
-        scheduleContent.appendChild(hourDivider);
-    }
-    
-    // Add current time indicator
-    updateCurrentTimeIndicator();
-    
-    // Update schedule items
-    renderSchedule();
-}
-
-// Update the current time indicator on the schedule
-function updateCurrentTimeIndicator() {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    
-    // Create or update current time indicator
-    let indicator = document.querySelector('.current-time-indicator');
-    if (!indicator) {
-        indicator = document.createElement('div');
-        indicator.className = 'current-time-indicator';
-        
-        const label = document.createElement('div');
-        label.className = 'current-time-label';
-        label.textContent = 'Now';
-        
-        indicator.appendChild(label);
-        document.getElementById('schedule-content').appendChild(indicator);
-    }
-    
-    // Position the indicator based on 24-hour schedule
-    const position = (hours + minutes / 60) * (100/24);
-    indicator.style.top = `${position}%`;
-}
-
-// Update the current time display
-function updateCurrentTime() {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12; // Convert to 12-hour format
-    
-    document.getElementById('current-time').innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        ${displayHours}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}
-    `;
-    
-    // Also update the time indicator
-    updateCurrentTimeIndicator();
-}
-
-// Start tracking time for a task
-function startTaskTracking(taskId) {
-    const now = new Date();
-    
-    // Create a new time block
-    const timeBlock = {
-        id: Date.now().toString(),
-        taskId: taskId,
-        startTime: now.toISOString(),
-        originalStartTime: now.toISOString(), // Store original start time
-        endTime: null,
-        type: 'task'
-    };
-    
-    // Add to timeBlocks array
-    timeBlocks.push(timeBlock);
-    
-    // Set lastTimestamp for continuous tracking
-    lastTimestamp = Date.now();
-    
-    // Save to localStorage
-    localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
-}
-
-// End tracking time for a task
-function endTaskTracking(taskId, reason = 'completed') {
-    const now = new Date();
-    
-    // Find the open time block for this task
-    const timeBlockIndex = timeBlocks.findIndex(block => 
-        block.taskId === taskId && block.endTime === null
-    );
-    
-    if (timeBlockIndex !== -1) {
-        // Update end time
-        timeBlocks[timeBlockIndex].endTime = now.toISOString();
-        timeBlocks[timeBlockIndex].reason = reason;
-        
-        // Save to localStorage
-        localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
-    }
-}
-
-// Show the add task modal
+// ========== Task CRUD ==========
 function showAddTaskModal() {
     document.getElementById('add-task-modal').style.display = 'flex';
     document.getElementById('task-name-input').focus();
 }
 
-// Hide the add task modal
 function hideAddTaskModal() {
     document.getElementById('add-task-modal').style.display = 'none';
     document.getElementById('task-form').reset();
-    
-    // Reset duration buttons
-    document.querySelectorAll('.duration-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector('.duration-btn[data-duration="30"]').classList.add('active');
+    document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
+    const def = document.querySelector('.duration-btn[data-duration="30"]');
+    if (def) def.classList.add('active');
     document.getElementById('task-duration-input').value = '30';
-    
-    // Reset priority slider
     document.getElementById('task-priority-input').value = '3';
     document.getElementById('priority-label').textContent = 'Medium';
 }
 
-// Save a new task
 function saveTask() {
-    const nameInput = document.getElementById('task-name-input');
-    const descriptionInput = document.getElementById('task-description-input');
-    const durationInput = document.getElementById('task-duration-input');
-    const priorityInput = document.getElementById('task-priority-input');
-    const tagsInput = document.getElementById('task-tags-input');
-    const deadlineInput = document.getElementById('task-deadline-input');
-    
-    if (!nameInput.value.trim()) {
-        alert('Task name is required!');
-        return;
-    }
-    
+    const name = document.getElementById('task-name-input').value.trim();
+    if (!name) { alert('Task name is required!'); return; }
+
     const task = {
         id: Date.now().toString(),
-        name: nameInput.value.trim(),
-        description: descriptionInput.value.trim(),
-        duration: parseInt(durationInput.value),
-        timeRemaining: parseInt(durationInput.value),
-        priority: parseInt(priorityInput.value),
-        tags: tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag),
-        deadline: deadlineInput.value || null,
+        name: name,
+        description: document.getElementById('task-description-input').value.trim(),
+        duration: parseInt(document.getElementById('task-duration-input').value),
+        timeRemaining: parseInt(document.getElementById('task-duration-input').value),
+        priority: parseInt(document.getElementById('task-priority-input').value),
+        tags: document.getElementById('task-tags-input').value.split(',').map(t => t.trim()).filter(t => t),
+        deadline: document.getElementById('task-deadline-input').value || null,
         createdAt: new Date().toISOString(),
         completed: false,
         progress: 0,
         rescheduleCount: 0
     };
-    
-    // Add the task to our array
+
     tasks.push(task);
-    
-    // If this is the first task, make it the current task
-    if (!currentTaskId && tasks.length === 1) {
+
+    if (!currentTaskId && dayStarted) {
         currentTaskId = task.id;
         startTaskTracking(currentTaskId);
     }
-    
-    // Save to localStorage
+
     saveToLocalStorage();
-    
-    // Rerender
     renderTasks();
-    
-    // Hide the modal
     hideAddTaskModal();
+
+    // Update start day screen count if visible
+    const countEl = document.getElementById('start-day-task-count');
+    if (countEl) countEl.textContent = tasks.filter(t => !t.completed).length;
 }
 
-// Handle pause button click
+// ========== Time Tracking ==========
+function startTaskTracking(taskId) {
+    const now = new Date();
+    timeBlocks.push({
+        id: Date.now().toString(),
+        taskId: taskId,
+        startTime: now.toISOString(),
+        originalStartTime: now.toISOString(),
+        endTime: null,
+        type: 'task'
+    });
+    lastTimestamp = Date.now();
+    localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
+}
+
+function endTaskTracking(taskId, reason = 'completed') {
+    const idx = timeBlocks.findIndex(b => b.taskId === taskId && b.endTime === null);
+    if (idx !== -1) {
+        timeBlocks[idx].endTime = new Date().toISOString();
+        timeBlocks[idx].reason = reason;
+        localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
+    }
+}
+
+function updateTimeTracking() {
+    if (!currentTaskId || isPaused || !dayStarted) { lastTimestamp = null; return; }
+    const now = Date.now();
+    if (lastTimestamp) {
+        const elapsed = (now - lastTimestamp) / 1000 / 60;
+        const idx = tasks.findIndex(t => t.id === currentTaskId);
+        if (idx !== -1) {
+            tasks[idx].timeRemaining = Math.max(0, tasks[idx].timeRemaining - elapsed);
+            tasks[idx].progress = Math.min(100, Math.round(100 - (tasks[idx].timeRemaining / tasks[idx].duration * 100)));
+            if (tasks[idx].timeRemaining <= 0) { completeCurrentTask(); return; }
+            updateCurrentTaskDisplay();
+        }
+        focusTime += elapsed;
+        localStorage.setItem('focusTime', focusTime.toString());
+        updateStatsDisplay();
+    }
+    lastTimestamp = now;
+}
+
+// ========== Pause / Break ==========
 function handlePause() {
     if (!isPaused) {
-        // Show pause reason modal
         document.getElementById('pause-reason-modal').style.display = 'flex';
-        
-        // Reset active state and other input
-        document.querySelectorAll('.pause-reason-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.pause-reason-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('other-reason-group').style.display = 'none';
         document.getElementById('other-reason-input').value = '';
     } else {
-        // Resume directly if already paused
         resumeTask();
     }
 }
 
-// Confirm pause after selecting reason
 function confirmPause() {
-    const activeReasonBtn = document.querySelector('.pause-reason-btn.active');
-    
-    if (!activeReasonBtn) {
-        alert('Please select a reason for pausing.');
-        return;
+    const activeBtn = document.querySelector('.pause-reason-btn.active');
+    if (!activeBtn) { alert('Please select a reason.'); return; }
+
+    let reasonText = activeBtn.dataset.reason;
+    if (reasonText === 'other') {
+        const val = document.getElementById('other-reason-input').value.trim();
+        if (!val) { alert('Please specify your reason.'); return; }
+        reasonText = val;
     }
-    
-    const reason = activeReasonBtn.dataset.reason;
-    let reasonText = reason;
-    
-    // Get custom reason text if "other" is selected
-    if (reason === 'other') {
-        const otherInput = document.getElementById('other-reason-input');
-        if (!otherInput.value.trim()) {
-            alert('Please specify your reason.');
-            return;
-        }
-        reasonText = otherInput.value.trim();
-    }
-    
-    // End tracking for current task
-    if (currentTaskId) {
-        endTaskTracking(currentTaskId, 'paused');
-    }
-    
-    // Record pause
+
+    if (currentTaskId) endTaskTracking(currentTaskId, 'paused');
+
     isPaused = true;
     pauseReason = reasonText;
     pauseTimestamp = Date.now();
-    
-    // Create a new time block for the break
-    const now = new Date();
-    const breakBlock = {
+
+    timeBlocks.push({
         id: Date.now().toString(),
         taskId: null,
         reason: reasonText,
-        startTime: now.toISOString(),
+        startTime: new Date().toISOString(),
         endTime: null,
         type: 'break'
-    };
-    
-    // Add to timeBlocks array
-    timeBlocks.push(breakBlock);
+    });
     localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
-    
-    // Update UI
-    const pauseBtn = document.getElementById('pause-btn');
-    pauseBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-        </svg>
-        Resume
-    `;
-    
-    // Re-render the schedule to show the break
+
+    updatePauseButtonUI(true);
     renderSchedule();
-    
-    // Hide the modal
     document.getElementById('pause-reason-modal').style.display = 'none';
 
-    // Show break timer overlay
+    // Show break timer
     document.getElementById('break-timer-overlay').style.display = 'flex';
     document.getElementById('break-timer-reason').textContent = reasonText;
     document.getElementById('break-timer-display').textContent = '00:00';
-
-    // Add body class for styling
     document.body.classList.add('break-mode');
-
-    // Start the break timer
     breakDuration = 0;
-    breakTimerInterval = setInterval(updateBreakTimer, 1000);
+    breakTimerInterval = setInterval(() => {
+        breakDuration++;
+        const m = Math.floor(breakDuration / 60);
+        const s = breakDuration % 60;
+        document.getElementById('break-timer-display').textContent =
+            `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }, 1000);
 
-    // Hide the modal
-    document.getElementById('pause-reason-modal').style.display = 'none';
+    saveToLocalStorage();
 }
 
-function updateBreakTimer() {
-    breakDuration++;
-    const minutes = Math.floor(breakDuration / 60);
-    const seconds = breakDuration % 60;
-      
-    document.getElementById('break-timer-display').textContent = 
-        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+function updatePauseButtonUI(paused) {
+    const btn = document.getElementById('pause-btn');
+    if (paused) {
+        btn.innerHTML = `<span class="icon-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></span>Resume`;
+    } else {
+        btn.innerHTML = `<span class="icon-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></span>Pause`;
+    }
 }
 
 function resumeTask() {
     if (!isPaused) return;
-    
-    // First show the notes prompt
-    const breakTimerContainer = document.getElementById('break-timer-overlay');
-    const breakNotesContainer = document.getElementById('break-notes-container');
-    
-    // Clear the timer interval
     clearInterval(breakTimerInterval);
-    
-    // Show notes input, hide resume button
     document.getElementById('resume-break-btn').style.display = 'none';
-    breakNotesContainer.style.display = 'block';
+    document.getElementById('break-notes-container').style.display = 'block';
 }
 
-// Add these new functions
 function saveBreakNotes() {
     const notes = document.getElementById('break-notes-input').value.trim();
-    
-    // Find the open break block
-    const breakBlockIndex = timeBlocks.findIndex(block => 
-        block.type === 'break' && block.endTime === null
-    );
-    
-    if (breakBlockIndex !== -1 && notes) {
-        timeBlocks[breakBlockIndex].notes = notes;
-    }
-    
-    // Complete the resume process
+    const idx = timeBlocks.findIndex(b => b.type === 'break' && b.endTime === null);
+    if (idx !== -1 && notes) timeBlocks[idx].notes = notes;
     completeResume();
 }
 
-function skipBreakNotes() {
-    // Complete the resume process without saving notes
-    completeResume();
-}
+function skipBreakNotes() { completeResume(); }
 
 function completeResume() {
-    // Find and end the break time block
-    const breakBlockIndex = timeBlocks.findIndex(block => 
-        block.type === 'break' && block.endTime === null
-    );
-    
-    if (breakBlockIndex !== -1) {
-        timeBlocks[breakBlockIndex].endTime = new Date().toISOString();
-    }
+    const idx = timeBlocks.findIndex(b => b.type === 'break' && b.endTime === null);
+    if (idx !== -1) timeBlocks[idx].endTime = new Date().toISOString();
 
-    // Reset pause state
     isPaused = false;
     pauseReason = null;
     pauseTimestamp = null;
 
-    // Update UI
-    const pauseBtn = document.getElementById('pause-btn');
-    pauseBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="6" y="4" width="4" height="16"></rect>
-            <rect x="14" y="4" width="4" height="16"></rect>
-        </svg>
-        Pause
-    `;
-
-    // Hide overlay
+    updatePauseButtonUI(false);
     document.getElementById('break-timer-overlay').style.display = 'none';
     document.getElementById('break-notes-container').style.display = 'none';
     document.getElementById('resume-break-btn').style.display = 'block';
     document.getElementById('break-notes-input').value = '';
-
     document.body.classList.remove('break-mode');
 
-    // Resume task tracking
-    if (currentTaskId) {
-        startTaskTracking(currentTaskId);
-    }
+    if (currentTaskId) startTaskTracking(currentTaskId);
 
-    // Update UI and storage
     renderSchedule();
     localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
-    localStorage.removeItem('pauses'); // Clean up
+    saveToLocalStorage();
 }
 
-// Complete the current task
+// ========== Complete / Reschedule / Distracted ==========
 function completeCurrentTask() {
     if (!currentTaskId) return;
-    
-    // End tracking for current task
     endTaskTracking(currentTaskId, 'completed');
-    
-    const taskIndex = tasks.findIndex(t => t.id === currentTaskId);
-    if (taskIndex !== -1) {
-        tasks[taskIndex].completed = true;
-        tasks[taskIndex].progress = 100;
-        tasks[taskIndex].completedAt = new Date().toISOString();
-        
-        // Find the next incomplete task
-        const oldTaskId = currentTaskId;
+    const idx = tasks.findIndex(t => t.id === currentTaskId);
+    if (idx !== -1) {
+        tasks[idx].completed = true;
+        tasks[idx].progress = 100;
+        tasks[idx].completedAt = new Date().toISOString();
+        const old = currentTaskId;
         setNextCurrentTask();
-        
-        // Start tracking new task if one was selected
-        if (currentTaskId && currentTaskId !== oldTaskId && !isPaused) {
-            startTaskTracking(currentTaskId);
-        }
-        
-        // Save changes
+        if (currentTaskId && currentTaskId !== old && !isPaused) startTaskTracking(currentTaskId);
         saveToLocalStorage();
-        
-        // Rerender
         renderTasks();
     }
 }
 
-// Reschedule the current task
 function rescheduleCurrentTask() {
     if (!currentTaskId) return;
+    const task = tasks.find(t => t.id === currentTaskId);
+    if (!task) return;
 
-    // Find the current task
-    const taskIndex = tasks.findIndex(t => t.id === currentTaskId);
-    if (taskIndex === -1) return;
-    
-    const currentTask = tasks[taskIndex];
-    
-    // Show the task switch confirmation modal with progress slider
     document.getElementById('task-switch-modal').style.display = 'flex';
     document.getElementById('switch-modal-title').textContent = 'Reschedule Task?';
-    document.getElementById('switch-modal-question').textContent = `Are you sure you want to reschedule "${currentTask.name}"?`;
-    
-    // Show the progress slider section
+    document.getElementById('switch-modal-question').textContent = `Reschedule "${task.name}"?`;
     document.getElementById('progress-slider-container').style.display = 'block';
-    
-    // Set the initial value of the progress slider to the current task progress
-    const progressSlider = document.getElementById('progress-slider');
-    progressSlider.value = currentTask.progress;
-    document.getElementById('progress-value').textContent = `${currentTask.progress}%`;
-    
-    // Set the action for the confirm button
-    const confirmButton = document.getElementById('confirm-switch-btn');
-    confirmButton.textContent = 'Reschedule';
-    confirmButton.dataset.action = 'reschedule';
-    confirmButton.dataset.taskId = currentTaskId;
-    
-    // Hide the new task name section
+    document.getElementById('progress-slider').value = task.progress;
+    document.getElementById('progress-value').textContent = `${task.progress}%`;
+
+    const btn = document.getElementById('confirm-switch-btn');
+    btn.textContent = 'Reschedule';
+    btn.dataset.action = 'reschedule';
+    btn.dataset.taskId = currentTaskId;
     document.getElementById('new-task-section').style.display = 'none';
 }
 
-// Update the confirm switch button event listener to handle both switch and reschedule
-document.getElementById('confirm-switch-btn').addEventListener('click', function() {
-    const action = this.dataset.action || 'switch';
-    
-    if (action === 'switch') {
-        const switchToId = this.dataset.switchToId;
-        if (switchToId) {
-            switchToTask(switchToId);
-        }
-    } else if (action === 'reschedule') {
-        const taskId = this.dataset.taskId;
-        if (taskId) {
-            completeReschedule(taskId);
-        }
-    }
-});
-
-// Function to complete the reschedule action with the updated progress
 function completeReschedule(taskId) {
-    const progressSlider = document.getElementById('progress-slider');
-    const newProgress = parseInt(progressSlider.value);
-    
-    // Find the task
-    const taskIndex = tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) return;
-    
-    // Update the task progress
-    tasks[taskIndex].progress = newProgress;
-    
-    // Calculate new time remaining based on progress
+    const newProgress = parseInt(document.getElementById('progress-slider').value);
+    const idx = tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return;
+
+    tasks[idx].progress = newProgress;
     if (newProgress > 0) {
-        const totalTimeSpent = calculateTotalTimeSpent(taskId);
-        const estimatedTotalTime = totalTimeSpent / (newProgress / 100);
-        tasks[taskIndex].timeRemaining = Math.max(0, estimatedTotalTime - totalTimeSpent);
+        const spent = calculateTotalTimeSpent(taskId);
+        const est = spent / (newProgress / 100);
+        tasks[idx].timeRemaining = Math.max(0, est - spent);
     }
-    
-    // End tracking for current task
+
     endTaskTracking(taskId, 'rescheduled');
-    
-    // Increment reschedule count
-    tasks[taskIndex].rescheduleCount += 1;
-    
-    // Set the next task as current
-    const oldTaskId = currentTaskId;
+    tasks[idx].rescheduleCount = (tasks[idx].rescheduleCount || 0) + 1;
+
+    const old = currentTaskId;
     setNextCurrentTask();
-    
-    // Start tracking new task if one was selected
-    if (currentTaskId && currentTaskId !== oldTaskId && !isPaused) {
-        startTaskTracking(currentTaskId);
-    }
-    
-    // Save changes
+    if (currentTaskId && currentTaskId !== old && !isPaused) startTaskTracking(currentTaskId);
+
     saveToLocalStorage();
     renderTasks();
-    
-    // Hide the modal
     document.getElementById('task-switch-modal').style.display = 'none';
 }
 
-// Calculate total time spent on a task
 function calculateTotalTimeSpent(taskId) {
-    let totalTimeSpent = 0;
-    
-    // Sum up all time blocks for this task
-    timeBlocks.forEach(block => {
-        if (block.taskId === taskId && block.endTime) {
-            const startTime = new Date(block.startTime);
-            const endTime = new Date(block.endTime);
-            const duration = (endTime - startTime) / (1000 * 60); // Convert to minutes
-            totalTimeSpent += duration;
+    let total = 0;
+    timeBlocks.forEach(b => {
+        if (b.taskId === taskId && b.endTime) {
+            total += (new Date(b.endTime) - new Date(b.startTime)) / 60000;
         }
     });
-    
-    return totalTimeSpent;
+    return total;
 }
 
-// Handle distraction button click
 function markDistracted() {
     alert('Focus lost! Take a moment to regain your concentration.');
-    
-    // In a real app, you might track distractions, show a motivational quote, etc.
 }
 
-// Set the next incomplete task as the current task
 function setNextCurrentTask() {
-    const incompleteTasks = sortTasks(tasks.filter(t => !t.completed));
-    currentTaskId = incompleteTasks.length > 0 ? incompleteTasks[0].id : null;
+    const incomplete = sortTasks(tasks.filter(t => !t.completed));
+    currentTaskId = incomplete.length > 0 ? incomplete[0].id : null;
     localStorage.setItem('currentTaskId', currentTaskId);
 }
 
-// Update time tracking
-function updateTimeTracking() {
-    if (!currentTaskId || isPaused) {
-        lastTimestamp = null;
-        return;
-    }
-    
-    const now = Date.now();
-    
-    // If we have a last timestamp, calculate the time difference
-    if (lastTimestamp) {
-        const elapsed = (now - lastTimestamp) / 1000 / 60; // Convert to minutes
-        
-        // Update the current task's time remaining
-        const taskIndex = tasks.findIndex(t => t.id === currentTaskId);
-        if (taskIndex !== -1) {
-            const task = tasks[taskIndex];
-            task.timeRemaining = Math.max(0, task.timeRemaining - elapsed);
-            
-            // Calculate progress based on time
-            task.progress = Math.min(100, Math.round(100 - (task.timeRemaining / task.duration * 100)));
-            
-            // If time is up, auto-complete the task
-            if (task.timeRemaining <= 0) {
-                completeCurrentTask();
-            }
-            
-            // Update the UI
-            updateCurrentTaskDisplay();
-        }
-        
-        // Add to the total focus time
-        focusTime += elapsed;
-        localStorage.setItem('focusTime', focusTime.toString());
-        
-        // Update the focus time display
-        updateStatsDisplay();
-    }
-    
-    // Set the current timestamp for the next iteration
-    lastTimestamp = now;
+function sortTasks(arr) {
+    return arr.sort((a, b) => {
+        if (b.priority !== a.priority) return b.priority - a.priority;
+        if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+        if (a.deadline) return -1;
+        if (b.deadline) return 1;
+        if ((a.rescheduleCount || 0) !== (b.rescheduleCount || 0))
+            return (a.rescheduleCount || 0) - (b.rescheduleCount || 0);
+        return new Date(a.createdAt) - new Date(b.createdAt);
+    });
 }
 
-// Render all tasks
+// ========== Task Switch ==========
+function switchToTask(taskId) {
+    if (currentTaskId && !isPaused) endTaskTracking(currentTaskId, 'switched');
+    currentTaskId = taskId;
+    if (!isPaused) startTaskTracking(currentTaskId);
+    saveToLocalStorage();
+    renderTasks();
+    document.getElementById('task-switch-modal').style.display = 'none';
+    resetSwitchModal();
+}
+
+function cancelTaskSwitch() {
+    document.getElementById('task-switch-modal').style.display = 'none';
+    resetSwitchModal();
+}
+
+function resetSwitchModal() {
+    document.getElementById('switch-modal-title').textContent = 'Switch Tasks?';
+    document.getElementById('confirm-switch-btn').textContent = 'Switch Tasks';
+    document.getElementById('confirm-switch-btn').dataset.action = 'switch';
+    document.getElementById('progress-slider-container').style.display = 'none';
+    document.getElementById('new-task-section').style.display = 'block';
+}
+
+// ========== Rendering ==========
 function renderTasks() {
     renderCurrentTask();
     renderTasksList();
     renderSchedule();
     updateStatsDisplay();
+    updateBriefing();
 }
 
-// Render the current task
 function renderCurrentTask() {
-    const currentTaskCard = document.getElementById('current-task-card');
-    const noTasksMessage = document.getElementById('no-tasks-message');
-    const tasksContainer = document.getElementById('tasks-container');
-    
+    const focusSec = document.getElementById('focus-section');
+    const noMsg = document.getElementById('no-tasks-message');
+    const queueSec = document.getElementById('queue-section');
+    const schedSec = document.getElementById('schedule-section');
+
     if (!currentTaskId || tasks.length === 0) {
-        currentTaskCard.style.display = 'none';
-        
+        focusSec.style.display = 'none';
         if (tasks.length === 0) {
-            noTasksMessage.style.display = 'flex';
-            tasksContainer.style.display = 'none';
+            noMsg.style.display = 'flex';
+            queueSec.style.display = 'none';
+            schedSec.style.display = 'none';
         } else {
-            noTasksMessage.style.display = 'none';
-            tasksContainer.style.display = 'block';
+            noMsg.style.display = 'none';
+            queueSec.style.display = 'flex';
+            schedSec.style.display = 'block';
         }
         return;
     }
-    
+
     const task = tasks.find(t => t.id === currentTaskId);
-    if (!task) {
-        currentTaskCard.style.display = 'none';
-        
-        if (tasks.length === 0) {
-            noTasksMessage.style.display = 'flex';
-            tasksContainer.style.display = 'none';
-        } else {
-            noTasksMessage.style.display = 'none';
-            tasksContainer.style.display = 'block';
-        }
-        return;
-    }
-    
-    // Hide the no tasks message and show the current task card and tasks container
-    noTasksMessage.style.display = 'none';
-    currentTaskCard.style.display = 'block';
-    tasksContainer.style.display = 'block';
-    
-    // Update the display
+    if (!task) { focusSec.style.display = 'none'; return; }
+
+    noMsg.style.display = 'none';
+    focusSec.style.display = 'block';
+    queueSec.style.display = 'flex';
+    schedSec.style.display = 'block';
     updateCurrentTaskDisplay();
 }
 
-// Update the current task display without completely re-rendering
 function updateCurrentTaskDisplay() {
     if (!currentTaskId) return;
-    
     const task = tasks.find(t => t.id === currentTaskId);
     if (!task) return;
-    
-    // Update task details
+
     document.getElementById('current-task-name').textContent = task.name;
     document.getElementById('current-task-description').textContent = task.description || 'No description provided.';
-    document.getElementById('current-task-progress').textContent = `${task.progress}%`;
+
+    const pctEl = document.getElementById('current-task-progress');
+    pctEl.innerHTML = `${task.progress}<sup>%</sup>`;
     document.getElementById('current-task-progress-bar').style.width = `${task.progress}%`;
-    
-    // Format the time remaining
-    const hours = Math.floor(task.timeRemaining / 60);
-    const minutes = Math.round(task.timeRemaining % 60);
-    let timeString = '';
-    if (hours > 0) {
-        timeString += `${hours} hr${hours > 1 ? 's' : ''} `;
-    }
-    timeString += `${minutes} min${minutes !== 1 ? 's' : ''}`;
-    document.getElementById('current-task-time-remaining').textContent = `${timeString} remaining`;
-    
-    // Render tags
-    const tagsContainer = document.getElementById('current-task-tags');
-    tagsContainer.innerHTML = '';
+
+    // Time remaining
+    const h = Math.floor(task.timeRemaining / 60);
+    const m = Math.round(task.timeRemaining % 60);
+    let ts = '';
+    if (h > 0) ts += `${h}h `;
+    ts += `${m}m`;
+    document.getElementById('current-task-time-remaining').textContent = `${ts} left`;
+
+    // Progress note
+    const now = new Date();
+    const finishTime = new Date(now.getTime() + task.timeRemaining * 60000);
+    const fh = finishTime.getHours() % 12 || 12;
+    const fm = finishTime.getMinutes();
+    const fap = finishTime.getHours() >= 12 ? 'PM' : 'AM';
+    document.getElementById('progress-note').textContent =
+        `On track \u2014 est. done by ${fh}:${fm < 10 ? '0' + fm : fm} ${fap}`;
+
+    // Tags
+    const tagsEl = document.getElementById('current-task-tags');
+    tagsEl.innerHTML = '';
     task.tags.forEach(tag => {
-        const tagElement = document.createElement('div');
-        tagElement.className = 'tag';
-        tagElement.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                <line x1="7" y1="7" x2="7.01" y2="7"></line>
-            </svg>
-            ${tag}
-        `;
-        tagsContainer.appendChild(tagElement);
+        const span = document.createElement('span');
+        span.className = 'tag';
+        span.textContent = tag;
+        tagsEl.appendChild(span);
     });
-    
-    // Display deadline if available
+
+    // Deadline
     if (task.deadline) {
-        const deadlineDate = new Date(task.deadline);
-        const options = { weekday: 'long', month: 'long', day: 'numeric' };
-        const deadlineString = deadlineDate.toLocaleDateString('en-US', options);
-        
-        // Calculate days remaining
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const deadlineDay = new Date(deadlineDate);
-        deadlineDay.setHours(0, 0, 0, 0);
-        
-        const diffTime = deadlineDay - today;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        const daysText = diffDays === 0 ? 'Today' : 
-                        diffDays === 1 ? 'Tomorrow' : 
-                        `(${diffDays} days)`;
-        
-        document.getElementById('current-task-deadline').textContent = `${deadlineString} ${daysText}`;
+        const dl = new Date(task.deadline);
+        const opts = { weekday: 'long', month: 'long', day: 'numeric' };
+        const dlStr = dl.toLocaleDateString('en-US', opts);
+        const today = new Date(); today.setHours(0,0,0,0);
+        const dlDay = new Date(dl); dlDay.setHours(0,0,0,0);
+        const diff = Math.ceil((dlDay - today) / 86400000);
+        const dText = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `(${diff} days)`;
+        document.getElementById('current-task-deadline').textContent = `${dlStr} ${dText}`;
     } else {
         document.getElementById('current-task-deadline').textContent = 'No deadline set';
     }
-    
-    // Update priority
-    const priorityContainer = document.getElementById('current-task-priority');
-    const priorityClass = task.priority === 1 ? 'lowest' : 
-                          task.priority === 2 ? 'low' : 
-                          task.priority === 3 ? 'medium' : 
-                          task.priority === 4 ? 'high' : 'urgent';
-    
-    priorityContainer.innerHTML = `
-        <div class="priority-indicator ${priorityClass}"></div>
-        <span class="detail-value-text">${PRIORITIES[task.priority]}</span>
-    `;
+
+    // Priority
+    const pc = PRIORITY_CLASSES[task.priority] || 'medium';
+    document.getElementById('current-task-priority').innerHTML =
+        `<span class="priority-bar ${pc}"></span>${PRIORITIES[task.priority]}`;
+
+    // Status indicator
+    const statusEl = document.getElementById('status-live');
+    if (isPaused) {
+        statusEl.innerHTML = '<span class="live-dot" style="background:var(--gold);animation:none"></span>Paused';
+        statusEl.style.color = 'var(--gold)';
+    } else {
+        statusEl.innerHTML = '<span class="live-dot"></span>In Progress';
+        statusEl.style.color = '';
+    }
 }
 
-// Render the tasks list
 function renderTasksList() {
-    const tasksList = document.getElementById('tasks-list');
-    
-    // Clear the list
-    tasksList.innerHTML = '';
-    
-    // Filter out the current task and completed tasks
-    const remainingTasks = sortTasks(tasks.filter(t => t.id !== currentTaskId && !t.completed));
+    const list = document.getElementById('tasks-list');
+    list.innerHTML = '';
 
-    if (remainingTasks.length === 0) {
-        return;
-    }
-    
-    // Add each task to the list
-    remainingTasks.forEach(task => {
-        const taskElement = document.createElement('div');
-        taskElement.className = 'task-item';
-        taskElement.dataset.id = task.id;
-        
-        // Format time remaining
-        const hours = Math.floor(task.timeRemaining / 60);
-        const minutes = Math.round(task.timeRemaining % 60);
-        let timeString = '';
-        if (hours > 0) {
-            timeString += `${hours}h `;
+    const remaining = sortTasks(tasks.filter(t => t.id !== currentTaskId && !t.completed));
+    const countEl = document.getElementById('queue-count');
+
+    // Calculate total time
+    let totalMins = 0;
+    remaining.forEach(t => totalMins += t.timeRemaining);
+    const th = Math.floor(totalMins / 60);
+    const tm = Math.round(totalMins % 60);
+    let timeStr = '';
+    if (th > 0) timeStr += `${th}h `;
+    timeStr += `${tm}m`;
+    countEl.textContent = `${remaining.length} task${remaining.length !== 1 ? 's' : ''} \u00b7 ~${timeStr}`;
+
+    remaining.forEach((task, i) => {
+        const el = document.createElement('div');
+        el.className = 'queue-item';
+        el.dataset.id = task.id;
+
+        const h = Math.floor(task.timeRemaining / 60);
+        const m = Math.round(task.timeRemaining % 60);
+        let ts = '';
+        if (h > 0) ts += `${h}h `;
+        ts += `${m}m`;
+
+        const pc = PRIORITY_CLASSES[task.priority] || 'medium';
+
+        // Context line
+        let ctx = task.tags.length > 0 ? task.tags[0] : '';
+        if (task.deadline) {
+            const dl = new Date(task.deadline);
+            const today = new Date(); today.setHours(0,0,0,0);
+            const dlDay = new Date(dl); dlDay.setHours(0,0,0,0);
+            const diff = Math.ceil((dlDay - today) / 86400000);
+            const dueText = diff === 0 ? 'Due today' : diff === 1 ? 'Due tomorrow' : diff <= 7 ? `Due in ${diff} days` : '';
+            if (dueText) ctx += (ctx ? ' \u00b7 ' : '') + dueText;
         }
-        timeString += `${minutes}m`;
-        
-        // Get priority class
-        const priorityClass = task.priority === 1 ? 'lowest' : 
-                              task.priority === 2 ? 'low' : 
-                              task.priority === 3 ? 'medium' : 
-                              task.priority === 4 ? 'high' : 'urgent';
-        
-        taskElement.innerHTML = `
-            <div class="task-item-left">
-                <div class="task-checkbox"></div>
-                <div class="task-item-info">
-                    <div class="task-item-title">${task.name}</div>
-                    <div class="task-item-subtitle">
-                        <div class="priority-indicator ${priorityClass}"></div>
-                        ${task.description ? task.description.substring(0, 50) + (task.description.length > 50 ? '...' : '') : 'No description'}
-                    </div>
-                </div>
+        if (!ctx) ctx = PRIORITIES[task.priority];
+
+        el.innerHTML = `
+            <span class="q-rank">${i + 1}</span>
+            <div class="q-indicator ${pc}"></div>
+            <div class="q-info">
+                <div class="q-title">${task.name}</div>
+                <div class="q-context">${ctx}</div>
             </div>
-            <div class="task-item-right">
-                <div class="task-item-badge">${timeString}</div>
-            </div>
+            <span class="q-duration">${ts}</span>
         `;
-        
-        // Add click event to show switch confirmation
-        taskElement.addEventListener('click', () => {
-            if (isPaused) {
-                alert("Please resume your current task before switching to a new one.");
-                return;
-            }
-            
-            // Store the task ID for potential switch
-            taskElement.dataset.switchId = task.id;
-            
-            // Get task names for confirmation
-            const currentTask = tasks.find(t => t.id === currentTaskId);
-            if (currentTask) {
-                document.getElementById('current-task-name-confirm').textContent = currentTask.name;
-                document.getElementById('new-task-name-confirm').textContent = task.name;
-                
-                // Show confirmation modal
+
+        el.addEventListener('click', () => {
+            if (isPaused) { alert("Resume your current task first."); return; }
+            const cur = tasks.find(t => t.id === currentTaskId);
+            if (cur) {
+                document.getElementById('current-task-name-confirm').textContent = cur.name;
+                const confirms = document.querySelectorAll('#new-task-name-confirm, #new-task-name-confirm-2');
+                confirms.forEach(c => c.textContent = task.name);
                 document.getElementById('task-switch-modal').style.display = 'flex';
-                
-                // Set up the confirm button with the right task ID
                 document.getElementById('confirm-switch-btn').dataset.switchToId = task.id;
+                document.getElementById('confirm-switch-btn').dataset.action = 'switch';
+                document.getElementById('confirm-switch-btn').textContent = 'Switch Tasks';
+                document.getElementById('progress-slider-container').style.display = 'none';
+                document.getElementById('new-task-section').style.display = 'block';
             } else {
-                // If no current task, just switch directly
                 switchToTask(task.id);
             }
         });
-        
-        tasksList.appendChild(taskElement);
+
+        list.appendChild(el);
     });
 }
 
-function switchToTask(taskId) {
-    // If there's a current task, end tracking for it
-    if (currentTaskId && !isPaused) {
-        endTaskTracking(currentTaskId, 'switched');
-    }
-    
-    // Update current task ID
-    currentTaskId = taskId;
-    
-    // Start tracking the new task
-    if (!isPaused) {
-        startTaskTracking(currentTaskId);
-    }
-    
-    saveToLocalStorage();
-    renderTasks();
-    
-    // Hide modal if open and reset its state
-    document.getElementById('task-switch-modal').style.display = 'none';
-    document.getElementById('switch-modal-title').textContent = 'Switch Tasks?';
-    document.getElementById('confirm-switch-btn').textContent = 'Switch Tasks';
-    document.getElementById('confirm-switch-btn').dataset.action = 'switch';
-    document.getElementById('progress-slider-container').style.display = 'none';
-    document.getElementById('new-task-section').style.display = 'block';
-}
-
-function cancelTaskSwitch() {
-    // Hide modal
-    document.getElementById('task-switch-modal').style.display = 'none';
-    
-    // Reset the modal state
-    document.getElementById('switch-modal-title').textContent = 'Switch Tasks?';
-    document.getElementById('confirm-switch-btn').textContent = 'Switch Tasks';
-    document.getElementById('confirm-switch-btn').dataset.action = 'switch';
-    document.getElementById('progress-slider-container').style.display = 'none';
-    document.getElementById('new-task-section').style.display = 'block';
-}
-
-function sortTasks(tasksArray) {
-    return tasksArray.sort((a, b) => {
-        // Priority descending (5 to 1)
-        if (b.priority !== a.priority) {
-            return b.priority - a.priority;
-        }
-        // Deadline ascending (earlier first, nulls last)
-        if (a.deadline && b.deadline) {
-            return new Date(a.deadline) - new Date(b.deadline);
-        }
-        if (a.deadline) return -1;
-        if (b.deadline) return 1;
-        // Reschedule count ascending (fewer reschedules first)
-        if (a.rescheduleCount !== b.rescheduleCount) {
-            return a.rescheduleCount - b.rescheduleCount;
-        }
-        // Creation date ascending (older first)
-        return new Date(a.createdAt) - new Date(b.createdAt);
-    });
-}
-
-// Render the schedule
+// ========== Schedule ==========
 function renderSchedule() {
-    const scheduleContent = document.getElementById('schedule-content');
-    
-    // Remove old schedule items but keep the hour dividers
-    const items = scheduleContent.querySelectorAll('.schedule-item');
-    items.forEach(item => item.remove());
-    
-    // Use 24-hour schedule
-    const totalHours = 24;
-    
-    // First, render all historical time blocks (completed tasks and breaks)
-    const completedBlocks = timeBlocks.filter(block => block.endTime !== null);
-    completedBlocks.forEach(block => {
-        const startTime = new Date(block.startTime);
-        const endTime = new Date(block.endTime);
-        
-        // Only show blocks for today
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const blockDate = new Date(startTime);
-        blockDate.setHours(0, 0, 0, 0);
-        
-        if (blockDate.getTime() !== today.getTime()) {
-            return;
-        }
-        
-        // Calculate position on schedule
-        const startHourFraction = startTime.getHours() + (startTime.getMinutes() / 60);
-        const endHourFraction = endTime.getHours() + (endTime.getMinutes() / 60);
-        
-        // Skip if outside display range
-        if (endHourFraction <= 0 || startHourFraction >= totalHours) {
-            return;
-        }
-        
-        // Adjust to fit within display
-        const adjustedStart = Math.max(0, startHourFraction);
-        const adjustedEnd = Math.min(totalHours, endHourFraction);
-        const duration = adjustedEnd - adjustedStart;
-        
-        // Calculate top and height as percentage
-        const topPosition = adjustedStart * (100/totalHours); // Percentage based on 24 hours
-        const height = duration * (100/totalHours); // Percentage based on 24 hours
-        
-        if (block.type === 'break') {
-            // Render break block
-            createScheduleItem(
-                scheduleContent,
-                { name: `Break: ${block.reason}` },
-                topPosition,
-                height,
-                'break-task'
-            );
-        } else {
-            // Find the task
-            const task = tasks.find(t => t.id === block.taskId);
-            if (task) {
-                // Render completed task block
-                createScheduleItem(
-                    scheduleContent,
-                    task,
-                    topPosition,
-                    height,
-                    'completed-task'
-                );
-            }
-        }
-    });
-    
-    // Next, render the current active block (if any)
-    const activeBlock = timeBlocks.find(block => block.endTime === null);
-    if (activeBlock) {
-        const startTime = new Date(activeBlock.startTime);
-        const now = new Date();
-        
-        // Calculate position on schedule
-        const startHourFraction = startTime.getHours() + (startTime.getMinutes() / 60);
-        
-        // Skip if outside display range
-        if (startHourFraction >= totalHours) {
-            // Do nothing
-        } else {
-            // Adjust to fit within display
-            const adjustedStart = Math.max(0, startHourFraction);
-            
-            if (activeBlock.type === 'break') {
-                // For breaks, show the actual elapsed time
-                const currentHourFraction = now.getHours() + (now.getMinutes() / 60);
-                const adjustedEnd = Math.min(totalHours, currentHourFraction);
-                const duration = adjustedEnd - adjustedStart;
-                
-                // Calculate top and height as percentage
-                const topPosition = adjustedStart * (100/totalHours);
-                const height = Math.max(0.5, duration * (100/totalHours));
-                
-                // Render active break block
-                createScheduleItem(
-                    scheduleContent,
-                    { name: `Break: ${activeBlock.reason}` },
-                    topPosition,
-                    height,
-                    'break-task'
-                );
-            } else if (activeBlock.taskId === currentTaskId) {
-                // Find the task
-                const task = tasks.find(t => t.id === activeBlock.taskId);
-                if (task) {
-                    // For in-progress tasks, use the original estimated duration
-                    // instead of compressing it as it's worked on
-                    const taskDuration = task.duration / 60; // Convert minutes to hours
-                    
-                    // Store the original start time to ensure consistency
-                    if (!activeBlock.originalStartTime) {
-                        activeBlock.originalStartTime = activeBlock.startTime;
-                        // Save to localStorage to persist this information
-                        localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
-                    }
-                    
-                    // Use the original start time for positioning
-                    const originalStartTime = new Date(activeBlock.originalStartTime || activeBlock.startTime);
-                    const originalStartHourFraction = originalStartTime.getHours() + (originalStartTime.getMinutes() / 60);
-                    const adjustedOriginalStart = Math.max(0, originalStartHourFraction);
-                    
-                    // Calculate top and height as percentage
-                    const topPosition = adjustedOriginalStart * (100/totalHours);
-                    const height = taskDuration * (100/totalHours);
-                    
-                    // Render current task block with original estimated size
-                    createScheduleItem(
-                        scheduleContent,
-                        task,
-                        topPosition,
-                        height,
-                        'current-task'
-                    );
-                }
-            }
-        }
-    }
-    
-    // Finally, render future tasks (if not paused)
-    if (!isPaused) {
-        let currentPosition = 0;
-        
-        // Get current time
-        const now = new Date();
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        
-        // Update current position based on now
-        currentPosition = Math.max(0, currentHour + currentMinute / 60);
-        
-        // If we have an active block, position should be after it ends
-        if (activeBlock && activeBlock.taskId === currentTaskId) {
-            // Calculate expected end time for current task
-            const task = tasks.find(t => t.id === currentTaskId);
-            if (task) {
-                // Use the original start time for consistency
-                const activeStartTime = new Date(activeBlock.originalStartTime || activeBlock.startTime);
-                const taskDuration = task.duration / 60; // Original duration in hours
-                
-                // Current position is start time plus original duration
-                currentPosition = Math.max(currentPosition, 
-                    activeStartTime.getHours() + activeStartTime.getMinutes() / 60 + taskDuration);
-            }
-        }
-        
-        // Get all active tasks (excluding current task)
-        let activeTasks = sortTasks(tasks.filter(t => !t.completed && t.id !== currentTaskId));
-        
-        // Place upcoming tasks
-        activeTasks.forEach(task => {
-            const taskDuration = task.timeRemaining / 60; // Convert minutes to hours
-            
-            // Don't place tasks that would end after the end of the day
-            if (currentPosition + taskDuration <= totalHours) {
-                // Create schedule item
-                createScheduleItem(
-                    scheduleContent,
-                    task,
-                    currentPosition * (100/totalHours), // Convert to percentage
-                    taskDuration * (100/totalHours), // Convert to percentage
-                    'future-task'
-                );
-                
-                // Update position for next task
-                currentPosition += taskDuration;
-            }
-        });
-    }
-}
+    const track = document.getElementById('schedule-track');
+    if (!track) return;
+    track.innerHTML = '';
 
-// Create a schedule item
-function createScheduleItem(container, task, topPosition, height, className) {
-    const item = document.createElement('div');
-    item.className = `schedule-item ${className} priority-${task.priority || '3'}`;
-    item.style.top = `${topPosition}%`;
-    
-    // Check if the height is too small for showing details
-    const MIN_HEIGHT_FOR_DETAILS = 3; // 3% of the schedule height
-    
-    // Create tooltip content with task details
-    let tooltipContent = '';
-    
-    // Add title with badge
-    tooltipContent += `<div class="tooltip-title">${task.name}`;
-    
-    // Add badge based on task type
-    if (className === 'current-task') {
-        tooltipContent += `<span class="tooltip-badge current">Current Task</span>`;
-    } else if (className === 'completed-task') {
-        tooltipContent += `<span class="tooltip-badge completed">Completed</span>`;
-    } else if (className === 'break-task') {
-        tooltipContent += `<span class="tooltip-badge break">Break</span>`;
-    } else {
-        tooltipContent += `<span class="tooltip-badge future">Upcoming</span>`;
-    }
-    
-    tooltipContent += `</div>`;
-    
-    // Add break reason if applicable
-    if (className === 'break-task' && task.breakReason) {
-        tooltipContent += `<div class="tooltip-reason">${task.breakReason}</div>`;
-    }
-    
-    // Add time information
-    if (className !== 'current-task' && className !== 'completed-task' && className !== 'break-task') {
-        // For future tasks, add time remaining
-        const hours = Math.floor(task.timeRemaining / 60);
-        const minutes = Math.round(task.timeRemaining % 60);
-        tooltipContent += `<div class="tooltip-time">Duration: `;
-        if (hours > 0) {
-            tooltipContent += `${hours}h `;
-        }
-        tooltipContent += `${minutes}m</div>`;
-    }
-    
-    // Add priority information
-    const priorityLabels = ['Lowest', 'Low', 'Medium', 'High', 'Urgent'];
-    if (task.priority && task.priority >= 1 && task.priority <= 5) {
-        tooltipContent += `<div class="tooltip-priority">Priority: ${priorityLabels[task.priority - 1]}</div>`;
-    }
-    
-    // Add description if available
-    if (task.description) {
-        tooltipContent += `<div class="tooltip-description">${task.description}</div>`;
-    }
-    
-    // Add mouse events for custom tooltip
-    item.addEventListener('mouseenter', (event) => {
-        showTooltip(tooltipContent, event);
-    });
-    
-    item.addEventListener('mousemove', (event) => {
-        if (tooltipVisible) {
-            showTooltip(tooltipContent, event);
-        }
-    });
-    
-    item.addEventListener('mouseleave', () => {
-        hideTooltip();
-    });
-    
-    if (height < MIN_HEIGHT_FOR_DETAILS) {
-        // For very small blocks, create a minimal representation without details
-        item.style.height = `${Math.max(height, 0.5)}%`; // Ensure at least 0.5% height for visibility
-        item.style.minHeight = 'auto'; // Override the CSS min-height
-        item.style.padding = '2px'; // Smaller padding
-        
-        // Empty content or minimal indicator
-        item.innerHTML = '';
-    } else {
-        // For normal sized blocks, show full details
-        item.style.height = `${height}%`;
-        
-        // Format time for badge
-        let badgeText = "";
-        if (className === 'current-task') {
-            badgeText = "Now";
-        } else if (className === 'completed-task') {
-            badgeText = "Done";
-        } else if (className === 'break-task') {
-            badgeText = "Break";
-        } else {
-            const hours = Math.floor(task.timeRemaining / 60);
-            const minutes = Math.round(task.timeRemaining % 60);
-            if (hours > 0) {
-                badgeText += `${hours}h `;
-            }
-            badgeText += `${minutes}m`;
-        }
-        
-        // Icon based on status
-        let icon = '';
-        if (className === 'current-task') {
-            icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>`;
-        } else if (className === 'break-task') {
-            icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                <line x1="6" y1="1" x2="6" y2="4"></line>
-                <line x1="10" y1="1" x2="10" y2="4"></line>
-                <line x1="14" y1="1" x2="14" y2="4"></line>
-            </svg>`;
-        } else if (className === 'completed-task') {
-            icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>`;
-        } else {
-            icon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>`;
-        }
-        
-        item.innerHTML = `
-            <div class="schedule-item-header">
-                <div class="schedule-item-title">
-                    ${icon}
-                    ${task.name}
-                </div>
-                <div class="item-badge">${badgeText}</div>
-            </div>
-        `;
-    }
-    
-    container.appendChild(item);
-}
+    const today = new Date();
+    today.setHours(0,0,0,0);
 
-// Update the stats display
-function updateStatsDisplay() {
-    // Count completed tasks
-    const completedCount = tasks.filter(t => t.completed).length;
-    
-    // Format focus time
-    const focusHours = Math.floor(focusTime / 60);
-    const focusMinutes = Math.round(focusTime % 60);
-    let focusTimeString = '';
-    if (focusHours > 0) {
-        focusTimeString += `${focusHours} hr${focusHours > 1 ? 's' : ''} `;
-    }
-    if (focusMinutes > 0 || focusHours === 0) {
-        focusTimeString += `${focusMinutes} min${focusMinutes !== 1 ? 's' : ''}`;
-    }
-    
-    // Update the display
-    document.getElementById('completed-count').textContent = `${completedCount} / ${tasks.length}`;
-    document.getElementById('focus-time').textContent = focusTimeString;
-}
+    // Gather items: completed blocks, current block, future tasks
+    const items = [];
 
-// Import tasks from todo.txt format
-function importTasks() {
-    const importText = document.getElementById('import-text').value.trim();
-    
-    if (!importText) {
-        alert('Please paste todo.txt content to import.');
-        return;
-    }
-    
-    const lines = importText.split('\n').filter(line => line.trim());
-    const importedTasks = [];
-    
-    lines.forEach(line => {
-        // Basic todo.txt parsing
-        // Format: (A) 2023-04-23 Task description @context +project due:2023-05-01
-        let priority = 3; // Default to medium
-        let name = line.trim();
-        let tags = [];
-        let deadline = null;
-        
-        // Extract priority
-        const priorityMatch = name.match(/^\(([A-Z])\)\s+/);
-        if (priorityMatch) {
-            // Convert A-Z priority to 1-5
-            const priorityLetter = priorityMatch[1];
-            if (priorityLetter === 'A') priority = 5; // Urgent
-            else if (priorityLetter === 'B') priority = 4; // High
-            else if (priorityLetter === 'C') priority = 3; // Medium
-            else if (priorityLetter === 'D') priority = 2; // Low
-            else priority = 1; // Lowest
-            
-            name = name.substring(priorityMatch[0].length);
+    // Completed time blocks for today
+    timeBlocks.filter(b => b.endTime && b.type !== 'marker').forEach(b => {
+        const start = new Date(b.startTime);
+        const end = new Date(b.endTime);
+        const bDay = new Date(start); bDay.setHours(0,0,0,0);
+        if (bDay.getTime() !== today.getTime()) return;
+
+        const dMins = Math.round((end - start) / 60000);
+        if (dMins < 1) return;
+
+        let name = 'Break';
+        let type = 'completed';
+        if (b.type === 'break') {
+            name = `Break: ${b.reason || ''}`;
+            type = 'break-block';
+        } else {
+            const task = tasks.find(t => t.id === b.taskId);
+            name = task ? task.name : 'Unknown';
         }
-        
-        // Extract creation date (if it exists)
-        const dateMatch = name.match(/^(\d{4}-\d{2}-\d{2})\s+/);
-        if (dateMatch) {
-            name = name.substring(dateMatch[0].length);
-        }
-        
-        // Extract contexts and projects as tags
-        const contextMatches = name.match(/@\w+/g) || [];
-        const projectMatches = name.match(/\+\w+/g) || [];
-        
-        contextMatches.forEach(context => {
-            tags.push(context.substring(1)); // Remove @
-            name = name.replace(context, '').trim();
-        });
-        
-        projectMatches.forEach(project => {
-            tags.push(project.substring(1)); // Remove +
-            name = name.replace(project, '').trim();
-        });
-        
-        // Extract due date
-        const dueMatch = name.match(/due:(\d{4}-\d{2}-\d{2})/);
-        if (dueMatch) {
-            deadline = dueMatch[1];
-            name = name.replace(dueMatch[0], '').trim();
-        }
-        
-        // Create task object
-        const task = {
-            id: Date.now().toString() + importedTasks.length, // Ensure unique IDs
+
+        items.push({
+            time: start,
             name: name,
-            description: '',
-            duration: 30, // Default 30 minutes
-            timeRemaining: 30,
-            priority: priority,
-            tags: tags,
-            deadline: deadline,
-            createdAt: new Date().toISOString(),
-            completed: false,
-            progress: 0
-        };
-        
-        importedTasks.push(task);
+            duration: dMins,
+            type: type
+        });
     });
-    
-    if (importedTasks.length === 0) {
-        alert('No valid tasks found in the imported content.');
-        return;
-    }
-    
-    // Add imported tasks to existing tasks
-    tasks = tasks.concat(importedTasks);
-    
-    // If no current task, set the first imported task as current
-    if (!currentTaskId && importedTasks.length > 0) {
-        currentTaskId = importedTasks[0].id;
-        if (!isPaused) {
-            startTaskTracking(currentTaskId);
+
+    // Active block
+    const activeBlock = timeBlocks.find(b => b.endTime === null && b.type !== 'marker');
+    if (activeBlock) {
+        const start = new Date(activeBlock.startTime);
+        const now = new Date();
+        const dMins = Math.round((now - start) / 60000);
+
+        if (activeBlock.type === 'break') {
+            items.push({ time: start, name: `Break: ${activeBlock.reason || ''}`, duration: Math.max(1, dMins), type: 'break-block' });
+        } else {
+            const task = tasks.find(t => t.id === activeBlock.taskId);
+            if (task) {
+                items.push({ time: start, name: task.name, duration: task.duration, type: 'current' });
+            }
         }
     }
-    
-    // Save to localStorage and rerender
+
+    // Future tasks
+    if (!isPaused) {
+        let nextTime = new Date();
+        if (activeBlock && activeBlock.type === 'task') {
+            const task = tasks.find(t => t.id === activeBlock.taskId);
+            if (task) {
+                const start = new Date(activeBlock.originalStartTime || activeBlock.startTime);
+                nextTime = new Date(start.getTime() + task.duration * 60000);
+            }
+        }
+        const future = sortTasks(tasks.filter(t => !t.completed && t.id !== currentTaskId));
+        future.forEach(task => {
+            items.push({ time: new Date(nextTime), name: task.name, duration: task.timeRemaining, type: 'future' });
+            nextTime = new Date(nextTime.getTime() + task.timeRemaining * 60000);
+        });
+    }
+
+    // Sort by time
+    items.sort((a, b) => a.time - b.time);
+
+    // Render
+    items.forEach(item => {
+        const el = document.createElement('div');
+        el.className = `schedule-block ${item.type}`;
+
+        const h = item.time.getHours() % 12 || 12;
+        const m = item.time.getMinutes();
+        const ap = item.time.getHours() >= 12 ? 'pm' : 'am';
+
+        const dh = Math.floor(item.duration / 60);
+        const dm = Math.round(item.duration % 60);
+        let dStr = '';
+        if (dh > 0) dStr += `${dh}h `;
+        dStr += `${dm}m`;
+
+        el.innerHTML = `
+            <span class="sched-time">${h}:${m < 10 ? '0' + m : m} ${ap}</span>
+            <span class="sched-name">${item.name}</span>
+            <span class="sched-duration">${dStr}</span>
+        `;
+        track.appendChild(el);
+    });
+
+    if (items.length === 0) {
+        track.innerHTML = '<div style="padding:16px;text-align:center;font-size:0.72rem;color:var(--text-muted)">No schedule items yet.</div>';
+    }
+}
+
+// ========== Stats ==========
+function updateStatsDisplay() {
+    const completed = tasks.filter(t => t.completed).length;
+    const fh = Math.floor(focusTime / 60);
+    const fm = Math.round(focusTime % 60);
+    let fs = '';
+    if (fh > 0) fs += `${fh}h `;
+    fs += `${fm}m`;
+    document.getElementById('completed-count').textContent = `${completed} / ${tasks.length}`;
+    document.getElementById('focus-time').textContent = fs;
+}
+
+// ========== Import / Export ==========
+function importTasks() {
+    const text = document.getElementById('import-text').value.trim();
+    if (!text) { alert('Paste todo.txt content to import.'); return; }
+
+    const lines = text.split('\n').filter(l => l.trim());
+    const imported = [];
+
+    lines.forEach(line => {
+        let priority = 3, name = line.trim(), tags = [], deadline = null;
+        let completed = false, completedAt = null, duration = 30, progress = 0;
+
+        if (name.startsWith('x ')) {
+            completed = true;
+            name = name.substring(2).trim();
+            const cdm = name.match(/^(\d{4}-\d{2}-\d{2})\s+/);
+            if (cdm) { completedAt = cdm[1]; name = name.substring(cdm[0].length); }
+        }
+
+        const pm = name.match(/^\(([A-Z])\)\s+/);
+        if (pm) {
+            const l = pm[1];
+            priority = l === 'A' ? 5 : l === 'B' ? 4 : l === 'C' ? 3 : l === 'D' ? 2 : 1;
+            name = name.substring(pm[0].length);
+        }
+
+        const dm = name.match(/^(\d{4}-\d{2}-\d{2})\s+/);
+        let createdAt = new Date().toISOString();
+        if (dm) { createdAt = new Date(dm[1]).toISOString(); name = name.substring(dm[0].length); }
+
+        (name.match(/@\w+/g) || []).forEach(c => { tags.push(c.substring(1)); name = name.replace(c, '').trim(); });
+        (name.match(/\+\w+/g) || []).forEach(p => { tags.push(p.substring(1)); name = name.replace(p, '').trim(); });
+
+        const durM = name.match(/\bdur:(\d+)\b/);
+        if (durM) { duration = Math.max(1, parseInt(durM[1])); name = name.replace(durM[0], '').trim(); }
+
+        const progM = name.match(/\bprogress:(\d{1,3})\b/);
+        if (progM) { progress = Math.min(100, Math.max(0, parseInt(progM[1]))); name = name.replace(progM[0], '').trim(); }
+
+        const dueM = name.match(/due:(\d{4}-\d{2}-\d{2})/);
+        if (dueM) { deadline = dueM[1]; name = name.replace(dueM[0], '').trim(); }
+
+        const np = completed ? 100 : progress;
+        const tr = completed ? 0 : Math.max(0, Math.round(duration * (1 - np / 100)));
+
+        imported.push({
+            id: Date.now().toString() + imported.length,
+            name, description: '', duration, timeRemaining: tr, priority, tags, deadline,
+            createdAt, completed, completedAt: completedAt ? new Date(completedAt).toISOString() : null,
+            progress: np, rescheduleCount: 0
+        });
+    });
+
+    if (imported.length === 0) { alert('No valid tasks found.'); return; }
+
+    tasks = tasks.concat(imported);
+    if (!currentTaskId && imported.length > 0 && dayStarted) {
+        currentTaskId = imported[0].id;
+        if (!isPaused) startTaskTracking(currentTaskId);
+    }
+
     saveToLocalStorage();
     renderTasks();
-    
-    // Clear import text and show success message
     document.getElementById('import-text').value = '';
-    alert(`Successfully imported ${importedTasks.length} tasks.`);
+    alert(`Imported ${imported.length} tasks.`);
 }
 
-// Export tasks to todo.txt format
 function exportTasks() {
-    if (tasks.length === 0) {
-        alert('No tasks to export.');
-        return;
-    }
-    
-    let exportText = '';
-    
+    if (tasks.length === 0) { alert('No tasks to export.'); return; }
+    const text = buildTodoTxt();
+    document.getElementById('export-text').value = text;
+    document.getElementById('export-output').style.display = 'block';
+
+    const ts = new Date();
+    const dp = ts.toISOString().split('T')[0];
+    const tp = `${String(ts.getHours()).padStart(2,'0')}-${String(ts.getMinutes()).padStart(2,'0')}`;
+    downloadTextFile(text, `tasklobster_${dp}_${tp}.todo.txt`, 'text/plain');
+}
+
+function exportTasksSilent() {
+    if (tasks.length === 0) return;
+    const text = buildTodoTxt();
+    const ts = new Date();
+    const dp = ts.toISOString().split('T')[0];
+    const tp = `${String(ts.getHours()).padStart(2,'0')}-${String(ts.getMinutes()).padStart(2,'0')}`;
+    downloadTextFile(text, `tasklobster_${dp}_${tp}.todo.txt`, 'text/plain');
+}
+
+function buildTodoTxt() {
+    let text = '';
     tasks.forEach(task => {
-        // Build todo.txt format line
-        
-        // Priority
         let line = '';
+        if (task.completed) {
+            const cd = task.completedAt ? formatDate(task.completedAt) + ' ' : '';
+            line += `x ${cd}`;
+        }
         if (task.priority === 5) line += '(A) ';
         else if (task.priority === 4) line += '(B) ';
         else if (task.priority === 3) line += '(C) ';
         else if (task.priority === 2) line += '(D) ';
         else if (task.priority === 1) line += '(E) ';
-        
-        // Creation date
-        const creationDate = new Date(task.createdAt);
-        line += `${creationDate.getFullYear()}-${String(creationDate.getMonth() + 1).padStart(2, '0')}-${String(creationDate.getDate()).padStart(2, '0')} `;
-        
-        // Task name
+
+        const cd = new Date(task.createdAt || new Date());
+        line += `${cd.getFullYear()}-${String(cd.getMonth()+1).padStart(2,'0')}-${String(cd.getDate()).padStart(2,'0')} `;
         line += task.name;
-        
-        // Tags (as contexts and projects)
-        task.tags.forEach(tag => {
-            line += ` @${tag}`;
-        });
-        
-        // Due date
-        if (task.deadline) {
-            line += ` due:${task.deadline}`;
-        }
-        
-        // Add completion status
-        if (task.completed) {
-            line = 'x ' + line;
-        }
-        
-        exportText += line + '\n';
+        (task.tags || []).forEach(t => { line += ` @${t}`; });
+        if (task.deadline) line += ` due:${task.deadline}`;
+        if (task.duration) line += ` dur:${Math.round(task.duration)}`;
+        if (task.progress !== undefined && task.progress !== null) line += ` progress:${Math.round(task.progress)}`;
+        text += line + '\n';
     });
-    
-    // Show export output
-    document.getElementById('export-text').value = exportText;
-    document.getElementById('export-output').style.display = 'block';
+    return text;
 }
 
-// Copy export text to clipboard
 function copyExportText() {
-    const exportText = document.getElementById('export-text');
-    exportText.select();
+    const el = document.getElementById('export-text');
+    el.select();
     document.execCommand('copy');
-    alert('Exported tasks copied to clipboard!');
+    alert('Copied to clipboard!');
 }
 
-// Generate timesheet
+// ========== Timesheet ==========
 function generateTimesheet() {
-    // Open the timesheet modal
     document.getElementById('timesheet-modal').style.display = 'flex';
-    
-    const timesheetContent = document.getElementById('timesheet-content');
-    timesheetContent.innerHTML = '';
-    
-    // Get today's date
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Get all time blocks for today
-    const todayBlocks = timeBlocks.filter(block => {
-        const blockDate = new Date(block.startTime);
-        blockDate.setHours(0, 0, 0, 0);
-        return blockDate.getTime() === today.getTime();
+    closeOptionsPanel();
+
+    const content = document.getElementById('timesheet-content');
+    content.innerHTML = '';
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayBlocks = timeBlocks.filter(b => {
+        const bd = new Date(b.startTime); bd.setHours(0,0,0,0);
+        return bd.getTime() === today.getTime() && b.type !== 'marker';
     });
-    
-    // Calculate total work time and break time
-    let totalWorkMinutes = 0;
-    let totalBreakMinutes = 0;
-    
-    todayBlocks.forEach(block => {
-        if (!block.endTime) return; // Skip active blocks
-        
-        const startTime = new Date(block.startTime);
-        const endTime = new Date(block.endTime);
-        const durationMinutes = (endTime - startTime) / 1000 / 60;
-        
-        if (block.type === 'break') {
-            totalBreakMinutes += durationMinutes;
-        } else {
-            totalWorkMinutes += durationMinutes;
-        }
+
+    let totalWork = 0, totalBreak = 0;
+    todayBlocks.forEach(b => {
+        if (!b.endTime) return;
+        const dur = (new Date(b.endTime) - new Date(b.startTime)) / 60000;
+        if (b.type === 'break') totalBreak += dur; else totalWork += dur;
     });
-    
-    // Create timesheet HTML
-    let timesheetHTML = `
-        <div class="timesheet-section">
-            <h4 class="timesheet-section-title">Time Log</h4>
-            <table class="timesheet-table">
-                <thead>
-                    <tr>
-                        <th>Start Time</th>
-                        <th>End Time</th>
-                        <th>Duration</th>
-                        <th>Activity</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
+
+    let html = `<table class="timesheet-table"><thead><tr><th>Start</th><th>End</th><th>Duration</th><th>Activity</th><th>Status</th></tr></thead><tbody>`;
+
     if (todayBlocks.length === 0) {
-        timesheetHTML += `
-            <tr>
-                <td colspan="5" style="text-align: center;">No activity recorded today</td>
-            </tr>
-        `;
+        html += `<tr><td colspan="5" style="text-align:center">No activity today</td></tr>`;
     } else {
-        // Sort blocks by start time
-        const sortedBlocks = [...todayBlocks].sort((a, b) => 
-            new Date(a.startTime) - new Date(b.startTime)
-        );
-        
-        sortedBlocks.forEach(block => {
-            const startTime = new Date(block.startTime);
-            const startTimeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            let endTimeStr = 'Active';
-            let durationStr = 'Ongoing';
-            let status = 'Active';
-            
-            if (block.endTime) {
-                const endTime = new Date(block.endTime);
-                endTimeStr = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                const durationMinutes = Math.round((endTime - startTime) / 1000 / 60);
-                const hours = Math.floor(durationMinutes / 60);
-                const minutes = durationMinutes % 60;
-                
-                durationStr = '';
-                if (hours > 0) durationStr += `${hours}h `;
-                durationStr += `${minutes}m`;
-                
-                status = block.reason || 'Completed';
+        [...todayBlocks].sort((a,b) => new Date(a.startTime) - new Date(b.startTime)).forEach(b => {
+            const st = new Date(b.startTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+            let et = 'Active', ds = 'Ongoing', status = 'Active';
+            if (b.endTime) {
+                et = new Date(b.endTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                const dm = Math.round((new Date(b.endTime) - new Date(b.startTime)) / 60000);
+                const dh = Math.floor(dm/60), dmr = dm%60;
+                ds = (dh > 0 ? `${dh}h ` : '') + `${dmr}m`;
+                status = b.reason || 'Completed';
             }
-            
-            let activity = 'Break';
-            if (block.type !== 'break' && block.taskId) {
-                const task = tasks.find(t => t.id === block.taskId);
-                if (task) {
-                    activity = task.name;
-                } else {
-                    activity = 'Unknown Task';
-                }
-            } else if (block.reason) {
-                activity = `Break: ${block.reason}`;
-            }
-            
-            timesheetHTML += `
-                <tr>
-                    <td>${startTimeStr}</td>
-                    <td>${endTimeStr}</td>
-                    <td>${durationStr}</td>
-                    <td>${activity}</td>
-                    <td>${status}</td>
-                </tr>
-            `;
+            let act = 'Break';
+            if (b.type !== 'break' && b.taskId) {
+                const t = tasks.find(t => t.id === b.taskId);
+                act = t ? t.name : 'Unknown';
+            } else if (b.reason) act = `Break: ${b.reason}`;
+            html += `<tr><td>${st}</td><td>${et}</td><td>${ds}</td><td>${act}</td><td>${status}</td></tr>`;
         });
     }
-    
-    // Format total times
-    const totalWorkHours = Math.floor(totalWorkMinutes / 60);
-    const totalWorkMinutesRemainder = totalWorkMinutes % 60;
-    let totalWorkText = '';
-    if (totalWorkHours > 0) totalWorkText += `${totalWorkHours}h `;
-    totalWorkText += `${totalWorkMinutesRemainder}m`;
-    
-    const totalBreakHours = Math.floor(totalBreakMinutes / 60);
-    const totalBreakMinutesRemainder = Math.round(totalBreakMinutes % 60);
-    let totalBreakText = '';
-    if (totalBreakHours > 0) totalBreakText += `${totalBreakHours}h `;
-    totalBreakText += `${totalBreakMinutesRemainder}m`;
-    
-    // Net working time
-    const netMinutes = Math.max(0, totalWorkMinutes);
-    const netHours = Math.floor(netMinutes / 60);
-    const netMinutesRemainder = Math.round(netMinutes % 60);
-    let netText = '';
-    if (netHours > 0) netText += `${netHours}h `;
-    netText += `${netMinutesRemainder}m`;
-    
-    timesheetHTML += `
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="timesheet-total">
-            <p>Total Work Time: ${totalWorkText}</p>
-            <p>Total Break Time: ${totalBreakText}</p>
-            <p>Net Working Time: ${netText}</p>
-        </div>
-    `;
-    
-    timesheetContent.innerHTML = timesheetHTML;
+
+    const fmtTime = (mins) => {
+        const h = Math.floor(mins/60), m = Math.round(mins%60);
+        return (h > 0 ? `${h}h ` : '') + `${m}m`;
+    };
+
+    html += `</tbody></table><div class="timesheet-total"><p>Work: ${fmtTime(totalWork)}</p><p>Breaks: ${fmtTime(totalBreak)}</p><p>Net: ${fmtTime(totalWork)}</p></div>`;
+    content.innerHTML = html;
 }
 
-// Hide timesheet modal
-function hideTimesheetModal() {
-    document.getElementById('timesheet-modal').style.display = 'none';
-}
-
-// Download timesheet as CSV file
 function downloadTimesheet() {
-    // Get today's date
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dateString = today.toISOString().split('T')[0];
-    
-    // Get all time blocks for today
-    const todayBlocks = timeBlocks.filter(block => {
-        const blockDate = new Date(block.startTime);
-        blockDate.setHours(0, 0, 0, 0);
-        return blockDate.getTime() === today.getTime();
-    });
-    
-    // Sort blocks by start time
-    const sortedBlocks = [...todayBlocks].sort((a, b) => 
-        new Date(a.startTime) - new Date(b.startTime)
-    );
-    
-    // Create CSV content
-    let csvContent = 'Start Time,End Time,Duration (minutes),Activity,Status\n';
-    
-    sortedBlocks.forEach(block => {
-        const startTime = new Date(block.startTime);
-        const startTimeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-        let endTimeStr = 'Active';
-        let durationMinutes = 'Ongoing';
-        let status = 'Active';
-        
-        if (block.endTime) {
-            const endTime = new Date(block.endTime);
-            endTimeStr = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            durationMinutes = Math.round((endTime - startTime) / 1000 / 60);
-            status = block.reason || 'Completed';
+    const today = new Date(); today.setHours(0,0,0,0);
+    const ds = today.toISOString().split('T')[0];
+    const blocks = timeBlocks.filter(b => {
+        const bd = new Date(b.startTime); bd.setHours(0,0,0,0);
+        return bd.getTime() === today.getTime() && b.type !== 'marker';
+    }).sort((a,b) => new Date(a.startTime) - new Date(b.startTime));
+
+    let csv = 'Start Time,End Time,Duration (minutes),Activity,Status\n';
+    blocks.forEach(b => {
+        const st = new Date(b.startTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        let et = 'Active', dm = 'Ongoing', status = 'Active';
+        if (b.endTime) {
+            et = new Date(b.endTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+            dm = Math.round((new Date(b.endTime) - new Date(b.startTime)) / 60000);
+            status = b.reason || 'Completed';
         }
-        
-        let activity = 'Break';
-        if (block.type !== 'break' && block.taskId) {
-            const task = tasks.find(t => t.id === block.taskId);
-            if (task) {
-                activity = task.name;
-            } else {
-                activity = 'Unknown Task';
-            }
-        } else if (block.reason) {
-            activity = `Break: ${block.reason}`;
-        }
-        
-        // Escape any commas in the text fields
-        activity = activity.replace(/,/g, ';');
-        status = status.replace(/,/g, ';');
-        
-        csvContent += `${startTimeStr},${endTimeStr},${durationMinutes},"${activity}","${status}"\n`;
+        let act = 'Break';
+        if (b.type !== 'break' && b.taskId) {
+            const t = tasks.find(t => t.id === b.taskId);
+            act = t ? t.name : 'Unknown';
+        } else if (b.reason) act = `Break: ${b.reason}`;
+        csv += `${st},${et},${dm},"${act.replace(/,/g,';')}","${String(status).replace(/,/g,';')}"\n`;
     });
-    
-    // Create a Blob with the CSV content
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    
-    // Create a download link
+    downloadTextFile(csv, `TaskLobster_Timesheet_${ds}.csv`, 'text/csv;charset=utf-8;');
+}
+
+// ========== Utilities ==========
+function downloadTextFile(content, filename, mime) {
+    const blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8;' });
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute('download', `TaskLobster_Timesheet_${dateString}.csv`);
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', filename);
     link.style.visibility = 'hidden';
-    
-    // Trigger download
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
-// Save all data to localStorage
+function formatDate(str) {
+    const d = new Date(str);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function saveToLocalStorage() {
     localStorage.setItem('tasks', JSON.stringify(tasks));
     localStorage.setItem('currentTaskId', currentTaskId);
     localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
     localStorage.setItem('focusTime', focusTime);
     localStorage.setItem('isPaused', isPaused);
+    localStorage.setItem('dayStarted', dayStarted);
 }
 
-// Initialize the app when the DOM is loaded
+// ========== Bootstrap ==========
 document.addEventListener('DOMContentLoaded', init);
-
-// Add event listener for progress slider
-document.getElementById('progress-slider').addEventListener('input', function() {
-    document.getElementById('progress-value').textContent = `${this.value}%`;
-});

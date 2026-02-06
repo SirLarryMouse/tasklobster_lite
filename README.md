@@ -23,6 +23,7 @@ This repository hosts both the free app version and the marketing/landing pages 
 - **Priority System**: 5-level priority system from low to urgent
 - **Todo.txt Compatible**: Import and export task data using the popular todo.txt format
 - **CSV Timesheet Export**: Generate professional timesheets of your work day
+- **Style Themes**: Switch between Executive and TaskLobster styles with light/dark mode
 - **100% Client-Side**: No server required, all data stored in browser localStorage
 
 ## Quick Start
@@ -77,11 +78,6 @@ tasklobster-lite/
 ├── styles.css         # App styling
 ├── script.js          # App functionality
 ├── assets/            # Images and static resources
-├── landing/           # Marketing and landing pages
-│   ├── index.html     # Homepage
-│   ├── about.html     # About page
-│   ├── pricing.html   # Pricing information
-│   └── css/           # Landing page styles
 └── README.md          # This file
 ```
 
@@ -100,6 +96,19 @@ All data is stored locally in your browser using localStorage. This means:
 - Works offline
 - Complete privacy - your data never leaves your computer
 - No server costs or dependencies
+
+## User Flow
+
+1. Starts day by clicking 'Start Day', adding in any new tasks, and then beginning the first task in the schedule.
+2. While working user can:
+  - Pause task for a break, meeting, other.
+  - Complete the task early and start on next task.
+  - Realise they got distracted, log it, and get back into the task.
+  - Reschedule task, bumping it down the list, and starting on the next one
+3. Each interaction (apart from distraction logging) is recorded as a log in the timesheet
+4. The user finishes day by clicking 'End Day' which prompts user to export timesheet, and potentially a todo.txt.
+
+Timesheets start with 'Start Day' and end with 'End Day', and are only stored for one day. So on any particular day you can download previous day's timesheet, or todays timesheet once you have ended the day. Days are not defined by time rather by the Start and End day buttons. The todo.txt retains completed tasks up to 100 completed tasks in order of time fo completion.
 
 ## Technical Details
 
@@ -149,12 +158,8 @@ Time blocks (for historical tracking) use this structure:
 Future plans for TaskLobsterLite include:
 
 - Dark mode
-- Custom themes
 - Keyboard shortcuts
 - Additional export formats
-- Improved visualization options
-- Template tasks
-- Repeating tasks
 - Browser notifications
 - PWA support for mobile installation
 
@@ -165,7 +170,7 @@ The full [TaskLobster](https://app.tasklobster.com) app is planned to include ad
 - Cloud sync across devices
 - Team collaboration
 - Calendar integration
-- AI task scheduling and suggestions
+- AI agent management
 - Delegation and task chunking workflows
 - Advanced analytics
 - Email integration
