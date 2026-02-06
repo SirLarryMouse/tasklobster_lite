@@ -70,21 +70,23 @@ body {
     font-family: var(--font-sans);
     background: var(--bg);
     color: var(--text);
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     justify-content: center;
     padding: 12px;
     transition: background 0.3s, color 0.3s;
+    overflow: hidden;
 }
 
 /* ========== Sidebar Container ========== */
 .sidebar {
     width: 400px;
     max-width: 100%;
-    min-height: calc(100vh - 24px);
+    height: calc(100vh - 24px);
     display: flex;
     flex-direction: column;
     gap: 12px;
+    overflow: hidden;
 }
 
 /* ========== Header ========== */
@@ -550,7 +552,7 @@ body {
 }
 
 /* ========== Queue ========== */
-.queue-section { flex: 1; display: flex; flex-direction: column; }
+.queue-section { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 .queue-header {
     display: flex;
@@ -827,10 +829,18 @@ body {
 .modal-close {
     background: none;
     border: none;
-    font-size: 1.4rem;
+    font-size: 1.2rem;
     color: var(--text-muted);
     cursor: pointer;
-    padding: 0 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.15s;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    background: var(--surface-2);
+    color: var(--text);
 }
 
 .modal-body { padding: 18px; }
@@ -841,6 +851,7 @@ body {
     justify-content: flex-end;
     gap: 8px;
     border-top: 1px solid var(--border);
+    background: var(--surface-2);
 }
 
 /* ========== Form Elements ========== */
@@ -917,19 +928,25 @@ body {
 }
 
 .duration-btn {
-    background: var(--surface-2);
+    background: var(--surface);
     border: 1px solid var(--border-strong);
     color: var(--text-secondary);
-    padding: 8px 14px;
+    padding: 9px 16px;
     border-radius: 6px;
     font-size: 0.78rem;
     font-weight: 600;
     font-family: var(--font-sans);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.15s;
+    min-width: 48px;
+    text-align: center;
 }
 
-.duration-btn:hover { background: var(--border); }
+.duration-btn:hover {
+    background: var(--gold-soft);
+    border-color: var(--gold-border);
+    color: var(--text);
+}
 
 .duration-btn.active {
     background: var(--text);
@@ -943,9 +960,11 @@ body {
 .priority-labels {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 4px;
-    font-size: 0.65rem;
+    margin-bottom: 6px;
+    font-size: 0.6rem;
+    font-weight: 500;
     color: var(--text-muted);
+    letter-spacing: 0.02em;
 }
 
 .priority-range {
@@ -953,7 +972,7 @@ body {
     -webkit-appearance: none;
     height: 6px;
     border-radius: 4px;
-    background: linear-gradient(to right, #4ade80, #a3e635, #facc15, #fb923c, #ef4444);
+    background: var(--border);
     outline: none;
     margin-bottom: 8px;
 }
@@ -964,9 +983,9 @@ body {
     height: 18px;
     border-radius: 50%;
     background: var(--surface);
-    border: 2px solid var(--text);
+    border: 2px solid var(--gold);
     cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
 .priority-range::-moz-range-thumb {
@@ -974,7 +993,7 @@ body {
     height: 18px;
     border-radius: 50%;
     background: var(--surface);
-    border: 2px solid var(--text);
+    border: 2px solid var(--gold);
     cursor: pointer;
 }
 
@@ -997,26 +1016,39 @@ body {
     background: var(--surface-2);
     border: 1px solid var(--border-strong);
     color: var(--text-secondary);
-    padding: 10px;
+    padding: 14px 10px;
     border-radius: 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     cursor: pointer;
     font-family: var(--font-sans);
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     transition: all 0.2s;
 }
 
-.pause-reason-btn:hover { background: var(--surface); border-color: var(--gold-border); }
+.pause-reason-btn svg {
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.pause-reason-btn:hover {
+    background: var(--gold-soft);
+    border-color: var(--gold-border);
+    color: var(--text);
+}
+
+.pause-reason-btn:hover svg { opacity: 1; }
 
 .pause-reason-btn.active {
     background: var(--gold-soft);
     border-color: var(--gold);
     color: var(--gold);
 }
+
+.pause-reason-btn.active svg { opacity: 1; }
 
 /* Slider */
 .slider-container {
@@ -1191,6 +1223,9 @@ body {
     flex-direction: column;
     gap: 12px;
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* ========== Scrollbar ========== */
@@ -1303,7 +1338,7 @@ body {
 
 [data-style="boil"] .sidebar {
     gap: 0;
-    min-height: 100vh;
+    height: 100vh;
 }
 
 /* Boil: Header — bold brand with icon */
@@ -1548,10 +1583,9 @@ body {
 }
 
 [data-style="boil"] .queue-item:hover {
-    border-color: var(--rose-border);
+    border-color: var(--rose);
     background: rgba(255,245,234,0.5);
-    transform: translateX(2px);
-    box-shadow: none;
+    box-shadow: 2px 2px 0 var(--text);
 }
 
 [data-style="boil"][data-theme="dark"] .queue-item:hover {
@@ -1742,21 +1776,21 @@ body {
     box-shadow: 1px 1px 0 var(--text);
 }
 
-[data-style="boil"] .duration-btn {
-    border: 2px solid var(--text);
-    border-radius: 8px;
-    font-family: 'Sora', sans-serif;
-    box-shadow: 1px 1px 0 var(--text);
-}
-
-[data-style="boil"] .duration-btn.active {
-    box-shadow: 0 0 0 var(--text);
-}
-
 [data-style="boil"] .pause-reason-btn {
     border: 2px solid var(--text);
     border-radius: 8px;
     font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    padding: 16px 10px;
+    box-shadow: 2px 2px 0 var(--text);
+    background: var(--bg);
+    transition: all 0.15s;
+}
+
+[data-style="boil"] .pause-reason-btn:hover {
+    background: var(--surface);
+    border-color: var(--text);
+    transform: translate(1px, 1px);
     box-shadow: 1px 1px 0 var(--text);
 }
 
@@ -1764,6 +1798,102 @@ body {
     background: var(--rose-soft);
     border-color: var(--rose);
     color: var(--rose);
+    box-shadow: 0 0 0 var(--text);
+    transform: translate(2px, 2px);
+}
+
+[data-style="boil"] .pause-reason-btn.active svg {
+    stroke: var(--rose);
+}
+
+/* Boil: Modal close button */
+[data-style="boil"] .modal-close {
+    font-weight: 800;
+    border: 2px solid var(--text);
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    box-shadow: 1px 1px 0 var(--text);
+    color: var(--text);
+    background: var(--surface);
+}
+
+[data-style="boil"] .modal-close:hover {
+    background: var(--rose-soft);
+    color: var(--rose);
+    border-color: var(--rose);
+    transform: translate(1px, 1px);
+    box-shadow: 0 0 0 var(--text);
+}
+
+/* Boil: Modal footer */
+[data-style="boil"] .modal-footer {
+    background: var(--surface-2);
+}
+
+/* Boil: Duration buttons enhanced */
+[data-style="boil"] .duration-btn {
+    border: 2px solid var(--text);
+    border-radius: 8px;
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    box-shadow: 2px 2px 0 var(--text);
+    background: var(--bg);
+    padding: 9px 16px;
+    transition: all 0.15s;
+}
+
+[data-style="boil"] .duration-btn:hover {
+    background: var(--surface);
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--text);
+}
+
+[data-style="boil"] .duration-btn.active {
+    background: var(--text);
+    color: var(--bg);
+    box-shadow: 0 0 0 var(--text);
+    transform: translate(2px, 2px);
+}
+
+/* Boil: Priority slider */
+[data-style="boil"] .priority-labels {
+    font-family: 'Sora', sans-serif;
+    font-size: 0.55rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+[data-style="boil"] .priority-range {
+    height: 10px;
+    border-radius: 10px;
+    border: 2px solid var(--text);
+    background: linear-gradient(to right, #4ade80, #a3e635, #facc15, #fb923c, #ef4444);
+}
+
+[data-style="boil"] .priority-range::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--text);
+    box-shadow: 1px 1px 0 var(--text);
+}
+
+[data-style="boil"] .priority-range::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--text);
+    box-shadow: 1px 1px 0 var(--text);
+}
+
+[data-style="boil"] .priority-indicator-label {
+    font-family: 'Sora', sans-serif;
+    font-weight: 800;
+    font-size: 0.82rem;
 }
 
 /* Boil: Break Timer */
@@ -1805,4 +1935,222 @@ body {
 
 [data-style="boil"] .style-toggle-btn.active {
     box-shadow: 0 0 0 var(--text);
+}
+
+/* ========== Toast Notifications ========== */
+.toast-container {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    font-weight: 500;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: auto;
+    max-width: 360px;
+    text-align: center;
+}
+
+.toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-info {
+    border-left: 3px solid var(--sage);
+}
+
+.toast-warning {
+    border-left: 3px solid var(--gold);
+}
+
+.toast-error {
+    border-left: 3px solid var(--rose);
+}
+
+/* Boil: Toast */
+[data-style="boil"] .toast {
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    border: 2px solid var(--text);
+    border-radius: 8px;
+    box-shadow: 3px 3px 0 var(--text);
+}
+
+[data-style="boil"] .toast-info { border-left: 4px solid var(--sage); }
+[data-style="boil"] .toast-warning { border-left: 4px solid var(--gold); }
+[data-style="boil"] .toast-error { border-left: 4px solid var(--rose); }
+
+/* ================================================================
+   P3: Boil theme — Modal body text, dialog typography overrides
+   ================================================================ */
+
+[data-style="boil"] .modal-body {
+    font-family: 'Sora', sans-serif;
+}
+
+[data-style="boil"] .modal-body p,
+[data-style="boil"] .modal-body .end-day-summary,
+[data-style="boil"] .modal-body .end-day-stats,
+[data-style="boil"] .modal-body .checkbox-label,
+[data-style="boil"] .modal-body .progress-note,
+[data-style="boil"] #switch-modal-question {
+    font-family: 'Sora', sans-serif;
+}
+
+[data-style="boil"] .modal-body .end-day-summary {
+    font-family: 'Sora', sans-serif;
+    font-weight: 800;
+}
+
+[data-style="boil"] .modal-body .slider-value {
+    font-family: 'Fira Code', monospace;
+    font-weight: 700;
+}
+
+/* Boil: End Day modal checkboxes */
+[data-style="boil"] .checkbox-label {
+    font-family: 'Sora', sans-serif;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+[data-style="boil"] .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--rose);
+}
+
+/* ================================================================
+   P3: Boil theme — Timesheet table
+   ================================================================ */
+
+[data-style="boil"] .timesheet-table {
+    font-family: 'Sora', sans-serif;
+    border: 2px solid var(--text);
+}
+
+[data-style="boil"] .timesheet-table th {
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    background: var(--surface-2);
+    border-bottom: 2px solid var(--text);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+}
+
+[data-style="boil"] .timesheet-table td {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.68rem;
+    border-bottom: 1.5px solid var(--text);
+    padding: 8px;
+}
+
+[data-style="boil"] .timesheet-table tr:last-child td {
+    border-bottom: none;
+}
+
+[data-style="boil"] .timesheet-total {
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 2px solid var(--text);
+}
+
+/* ================================================================
+   P3: Boil theme — Progress slider in Task Switch modal
+   ================================================================ */
+
+[data-style="boil"] #progress-slider-container p {
+    font-family: 'Sora', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+[data-style="boil"] #progress-slider-container .progress-note {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.62rem;
+    color: var(--text-muted);
+}
+
+[data-style="boil"] .slider-container .priority-range {
+    height: 10px;
+    border-radius: 10px;
+    border: 2px solid var(--text);
+}
+
+[data-style="boil"] .slider-container .priority-range::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--text);
+    box-shadow: 1px 1px 0 var(--text);
+}
+
+[data-style="boil"] .slider-container .priority-range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--text);
+    box-shadow: 1px 1px 0 var(--text);
+}
+
+/* ================================================================
+   P3: Boil theme — Break timer text elements
+   ================================================================ */
+
+[data-style="boil"] .break-timer-reason {
+    font-family: 'Sora', sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.72rem;
+}
+
+[data-style="boil"] .break-notes-prompt {
+    font-family: 'Sora', sans-serif;
+    font-weight: 600;
+    font-size: 0.72rem;
+}
+
+[data-style="boil"] .break-notes-container .btn {
+    font-family: 'Sora', sans-serif;
+}
+
+/* ================================================================
+   Executive theme — Modal refinements (consistency pass)
+   ================================================================ */
+
+.modal-body p {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+}
+
+.modal-body p strong {
+    color: var(--text);
+    font-weight: 600;
+}
+
+#progress-slider-container .progress-note {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-top: 4px;
 }

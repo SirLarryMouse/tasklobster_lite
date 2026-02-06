@@ -14,8 +14,43 @@ let dayStarted = localStorage.getItem('dayStarted') === 'true';
 const PRIORITIES = { 1: 'Lowest', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Urgent' };
 const PRIORITY_CLASSES = { 1: 'lowest', 2: 'low', 3: 'medium', 4: 'high', 5: 'urgent' };
 
+function generateId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+}
+
+// ========== Toast Notifications ==========
+function showToast(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    setTimeout(() => {
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
 // ========== Init ==========
+function closeOrphanedTimeBlocks() {
+    let changed = false;
+    timeBlocks.forEach(b => {
+        if (b.endTime === null && b.type !== 'marker') {
+            // Only keep the current active task block open
+            if (b.type === 'task' && b.taskId === currentTaskId && dayStarted && !isPaused) return;
+            b.endTime = new Date().toISOString();
+            b.reason = b.reason || 'orphaned-cleanup';
+            changed = true;
+        }
+    });
+    if (changed) localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
+}
+
 function init() {
+    closeOrphanedTimeBlocks();
     updateHeaderTime();
     updateHeaderDate();
     updateGreeting();
@@ -27,7 +62,7 @@ function init() {
     document.getElementById('dark-mode-toggle').addEventListener('click', toggleDarkMode);
 
     // Style theme
-    const savedStyle = localStorage.getItem('appStyle') || 'executive';
+    const savedStyle = localStorage.getItem('appStyle') || 'boil';
     document.documentElement.setAttribute('data-style', savedStyle);
     setupStyleToggle();
 
@@ -111,6 +146,11 @@ function init() {
     // Time tracking
     setInterval(updateTimeTracking, 1000);
 
+    // Reset lastTimestamp when tab becomes visible again to prevent time jumps
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) lastTimestamp = null;
+    });
+
     // Show correct screen
     if (dayStarted) {
         showMainContent();
@@ -136,7 +176,7 @@ function toggleDarkMode() {
 // ========== Style Toggle ==========
 function setupStyleToggle() {
     const btns = document.querySelectorAll('.style-toggle-btn');
-    const current = localStorage.getItem('appStyle') || 'executive';
+    const current = localStorage.getItem('appStyle') || 'boil';
     btns.forEach(btn => {
         if (btn.dataset.style === current) btn.classList.add('active');
         btn.addEventListener('click', () => {
@@ -197,7 +237,7 @@ function startDay() {
     // Record start-day time block
     const now = new Date();
     timeBlocks.push({
-        id: Date.now().toString(),
+        id: generateId(),
         taskId: null,
         reason: 'Day Started',
         startTime: now.toISOString(),
@@ -245,7 +285,7 @@ function confirmEndDay() {
     // Record end-day marker
     const now = new Date();
     timeBlocks.push({
-        id: Date.now().toString(),
+        id: generateId(),
         taskId: null,
         reason: 'Day Ended',
         startTime: now.toISOString(),
@@ -348,10 +388,10 @@ function hideAddTaskModal() {
 
 function saveTask() {
     const name = document.getElementById('task-name-input').value.trim();
-    if (!name) { alert('Task name is required!'); return; }
+    if (!name) { showToast('Task name is required!', 'warning'); return; }
 
     const task = {
-        id: Date.now().toString(),
+        id: generateId(),
         name: name,
         description: document.getElementById('task-description-input').value.trim(),
         duration: parseInt(document.getElementById('task-duration-input').value),
@@ -385,7 +425,7 @@ function saveTask() {
 function startTaskTracking(taskId) {
     const now = new Date();
     timeBlocks.push({
-        id: Date.now().toString(),
+        id: generateId(),
         taskId: taskId,
         startTime: now.toISOString(),
         originalStartTime: now.toISOString(),
@@ -409,7 +449,9 @@ function updateTimeTracking() {
     if (!currentTaskId || isPaused || !dayStarted) { lastTimestamp = null; return; }
     const now = Date.now();
     if (lastTimestamp) {
-        const elapsed = (now - lastTimestamp) / 1000 / 60;
+        const rawElapsed = (now - lastTimestamp) / 1000 / 60;
+        // Cap at 3 seconds worth to prevent tab-throttle / sleep jumps
+        const elapsed = Math.min(rawElapsed, 0.05);
         const idx = tasks.findIndex(t => t.id === currentTaskId);
         if (idx !== -1) {
             tasks[idx].timeRemaining = Math.max(0, tasks[idx].timeRemaining - elapsed);
@@ -438,12 +480,12 @@ function handlePause() {
 
 function confirmPause() {
     const activeBtn = document.querySelector('.pause-reason-btn.active');
-    if (!activeBtn) { alert('Please select a reason.'); return; }
+    if (!activeBtn) { showToast('Please select a reason.', 'warning'); return; }
 
     let reasonText = activeBtn.dataset.reason;
     if (reasonText === 'other') {
         const val = document.getElementById('other-reason-input').value.trim();
-        if (!val) { alert('Please specify your reason.'); return; }
+        if (!val) { showToast('Please specify your reason.', 'warning'); return; }
         reasonText = val;
     }
 
@@ -454,7 +496,7 @@ function confirmPause() {
     pauseTimestamp = Date.now();
 
     timeBlocks.push({
-        id: Date.now().toString(),
+        id: generateId(),
         taskId: null,
         reason: reasonText,
         startTime: new Date().toISOString(),
@@ -602,7 +644,20 @@ function calculateTotalTimeSpent(taskId) {
 }
 
 function markDistracted() {
-    alert('Focus lost! Take a moment to regain your concentration.');
+    if (!currentTaskId) return;
+    timeBlocks.push({
+        id: generateId(),
+        taskId: currentTaskId,
+        reason: 'distracted',
+        startTime: new Date().toISOString(),
+        endTime: new Date().toISOString(),
+        type: 'distraction-marker'
+    });
+    localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
+
+    const task = tasks.find(t => t.id === currentTaskId);
+    const name = task ? task.name : 'current task';
+    showToast(`Distraction logged on "${name}". Refocus!`, 'warning');
 }
 
 function setNextCurrentTask() {
@@ -612,7 +667,7 @@ function setNextCurrentTask() {
 }
 
 function sortTasks(arr) {
-    return arr.sort((a, b) => {
+    return [...arr].sort((a, b) => {
         if (b.priority !== a.priority) return b.priority - a.priority;
         if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
         if (a.deadline) return -1;
@@ -808,7 +863,7 @@ function renderTasksList() {
         `;
 
         el.addEventListener('click', () => {
-            if (isPaused) { alert("Resume your current task first."); return; }
+            if (isPaused) { showToast('Resume your current task first.', 'warning'); return; }
             const cur = tasks.find(t => t.id === currentTaskId);
             if (cur) {
                 document.getElementById('current-task-name-confirm').textContent = cur.name;
@@ -949,7 +1004,7 @@ function updateStatsDisplay() {
 // ========== Import / Export ==========
 function importTasks() {
     const text = document.getElementById('import-text').value.trim();
-    if (!text) { alert('Paste todo.txt content to import.'); return; }
+    if (!text) { showToast('Paste todo.txt content to import.', 'warning'); return; }
 
     const lines = text.split('\n').filter(l => l.trim());
     const imported = [];
@@ -992,29 +1047,29 @@ function importTasks() {
         const tr = completed ? 0 : Math.max(0, Math.round(duration * (1 - np / 100)));
 
         imported.push({
-            id: Date.now().toString() + imported.length,
+            id: generateId(),
             name, description: '', duration, timeRemaining: tr, priority, tags, deadline,
             createdAt, completed, completedAt: completedAt ? new Date(completedAt).toISOString() : null,
             progress: np, rescheduleCount: 0
         });
     });
 
-    if (imported.length === 0) { alert('No valid tasks found.'); return; }
+    if (imported.length === 0) { showToast('No valid tasks found.', 'warning'); return; }
 
     tasks = tasks.concat(imported);
     if (!currentTaskId && imported.length > 0 && dayStarted) {
-        currentTaskId = imported[0].id;
-        if (!isPaused) startTaskTracking(currentTaskId);
+        setNextCurrentTask();
+        if (currentTaskId && !isPaused) startTaskTracking(currentTaskId);
     }
 
     saveToLocalStorage();
     renderTasks();
     document.getElementById('import-text').value = '';
-    alert(`Imported ${imported.length} tasks.`);
+    showToast(`Imported ${imported.length} tasks.`, 'info');
 }
 
 function exportTasks() {
-    if (tasks.length === 0) { alert('No tasks to export.'); return; }
+    if (tasks.length === 0) { showToast('No tasks to export.', 'warning'); return; }
     const text = buildTodoTxt();
     document.getElementById('export-text').value = text;
     document.getElementById('export-output').style.display = 'block';
@@ -1064,7 +1119,7 @@ function copyExportText() {
     const el = document.getElementById('export-text');
     el.select();
     document.execCommand('copy');
-    alert('Copied to clipboard!');
+    showToast('Copied to clipboard!', 'info');
 }
 
 // ========== Timesheet ==========

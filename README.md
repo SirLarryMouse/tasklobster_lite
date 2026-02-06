@@ -157,7 +157,6 @@ Time blocks (for historical tracking) use this structure:
 
 Future plans for TaskLobsterLite include:
 
-- Dark mode
 - Keyboard shortcuts
 - Additional export formats
 - Browser notifications
