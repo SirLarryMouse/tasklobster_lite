@@ -721,7 +721,7 @@ function renderCurrentTask() {
         focusSec.style.display = 'none';
         if (tasks.length === 0) {
             noMsg.style.display = 'flex';
-            queueSec.style.display = 'none';
+            queueSec.style.display = 'flex';
             schedSec.style.display = 'none';
         } else {
             noMsg.style.display = 'none';

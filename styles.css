@@ -970,6 +970,8 @@ body {
 .priority-range {
     width: 100%;
     -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
     height: 6px;
     border-radius: 4px;
     background: var(--border);
@@ -995,6 +997,13 @@ body {
     background: var(--surface);
     border: 2px solid var(--gold);
     cursor: pointer;
+}
+
+.priority-range::-moz-range-track {
+    height: 6px;
+    border-radius: 4px;
+    background: var(--border);
+    border: none;
 }
 
 .priority-indicator-container { text-align: center; }
@@ -1074,6 +1083,7 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 9000;
+    -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
 }
 
@@ -1226,6 +1236,7 @@ body {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    padding-right: 4px;
 }
 
 /* ========== Scrollbar ========== */
@@ -1233,6 +1244,12 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+}
 
 /* ========== Style Toggle Buttons ========== */
 .style-toggle-buttons {
@@ -1339,6 +1356,11 @@ body {
 [data-style="boil"] .sidebar {
     gap: 0;
     height: 100vh;
+}
+
+[data-style="boil"] #main-content.active {
+    padding-left: 16px;
+    padding-right: 20px;
 }
 
 /* Boil: Header — bold brand with icon */
@@ -1567,6 +1589,7 @@ body {
     border: 2px solid var(--text);
     box-shadow: 2px 2px 0 var(--text);
     font-weight: 300;
+    margin-right: 2px;
 }
 
 [data-style="boil"] .add-btn:hover {
@@ -1870,6 +1893,15 @@ body {
 }
 
 [data-style="boil"] .priority-range {
+    height: 10px;
+    border-radius: 10px;
+    border: 2px solid var(--text);
+    background: linear-gradient(to right, #4ade80, #a3e635, #facc15, #fb923c, #ef4444);
+    -moz-appearance: none;
+    appearance: none;
+}
+
+[data-style="boil"] .priority-range::-moz-range-track {
     height: 10px;
     border-radius: 10px;
     border: 2px solid var(--text);
